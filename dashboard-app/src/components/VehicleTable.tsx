@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import type { VehicleStats } from '../types';
 
 interface VehicleTableProps {
@@ -70,17 +70,11 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({ vehicles, onVehicleS
   }, [filteredVehicles, sortColumn, sortDirection]);
 
   const totalPages = Math.max(1, Math.ceil(sortedVehicles.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
   const paginatedVehicles = useMemo(() => {
-    const safePage = Math.min(page, totalPages);
-    const start = (safePage - 1) * PAGE_SIZE;
+    const start = (currentPage - 1) * PAGE_SIZE;
     return sortedVehicles.slice(start, start + PAGE_SIZE);
-  }, [sortedVehicles, page, totalPages]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  }, [sortedVehicles, currentPage]);
 
   const LevelBadge: React.FC<{ level: number }> = ({ level }) => {
     const configs: Record<number, { color: string; bg: string; icon: string; label: string }> = {
@@ -201,7 +195,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({ vehicles, onVehicleS
               setFilters({ ...filters, showOnlyWithEvents: e.target.checked });
               setPage(1);
             }}
-            style={{ accentColor: '#c084fc' }}
+            style={{ accentColor: '#F5B800' }}
           />
           <span style={{ fontSize: '0.875rem' }} title="Muestra solo vehículos con al menos un evento de exceso">Solo con eventos</span>
         </label>
@@ -237,7 +231,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({ vehicles, onVehicleS
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     cursor: 'pointer',
                     background: selectedRegistration === vehicle.registration
-                      ? 'rgba(192,132,252,0.12)'
+                      ? 'rgba(27,61,140,0.2)'
                       : 'transparent',
                     transition: 'background 0.15s',
                   }}
@@ -286,12 +280,12 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({ vehicles, onVehicleS
       
       <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: '0.875rem', color: '#cbd5e1' }}>
-          Mostrando {filteredVehicles.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, filteredVehicles.length)} de {filteredVehicles.length} vehículos filtrados ({vehicles.length} total)
+          Mostrando {filteredVehicles.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredVehicles.length)} de {filteredVehicles.length} vehículos filtrados ({vehicles.length} total)
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={currentPage === 1}
             style={{
               padding: '0.375rem 0.75rem',
               fontSize: '0.75rem',
@@ -299,18 +293,18 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({ vehicles, onVehicleS
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '0.5rem',
-              color: page === 1 ? '#64748b' : '#cbd5e1',
-              cursor: page === 1 ? 'not-allowed' : 'pointer'
+              color: currentPage === 1 ? '#64748b' : '#cbd5e1',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
             }}
           >
             Anterior
           </button>
           <span style={{ fontSize: '0.75rem', color: '#cbd5e1', minWidth: '5.5rem', textAlign: 'center' }}>
-            Página {page}/{totalPages}
+            Página {currentPage}/{totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            disabled={currentPage === totalPages}
             style={{
               padding: '0.375rem 0.75rem',
               fontSize: '0.75rem',
@@ -318,8 +312,8 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({ vehicles, onVehicleS
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '0.5rem',
-              color: page === totalPages ? '#64748b' : '#cbd5e1',
-              cursor: page === totalPages ? 'not-allowed' : 'pointer'
+              color: currentPage === totalPages ? '#64748b' : '#cbd5e1',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
             }}
           >
             Siguiente

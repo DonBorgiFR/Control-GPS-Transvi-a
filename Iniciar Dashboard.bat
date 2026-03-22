@@ -23,6 +23,15 @@ if %errorlevel% neq 0 (
 :: Ir al directorio de la aplicación
 cd /d "%~dp0dashboard-app"
 
+:: Verificar que package.json exista
+if not exist "package.json" (
+    echo  [ERROR] No se encontro package.json en dashboard-app.
+    echo  Ruta esperada: %~dp0dashboard-app
+    echo.
+    pause
+    exit /B 1
+)
+
 :: Instalar dependencias si es primera vez (no existe node_modules)
 if not exist "node_modules\" (
     echo  Primera ejecución: instalando dependencias...
@@ -43,7 +52,8 @@ echo  Iniciando servidor...
 echo.
 
 :: Abrir una ventana minimizada con el servidor de desarrollo
-start /min "Servidor Dashboard GPS" cmd /k "npm run dev"
+:: Nota: forzamos el directorio para evitar errores por carpeta de trabajo incorrecta
+start /min "Servidor Dashboard GPS" cmd /k "cd /d \"%~dp0dashboard-app\" && npm run dev"
 
 :: Esperar que el servidor arranque
 timeout /t 4 /nobreak > nul

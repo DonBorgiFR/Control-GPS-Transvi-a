@@ -361,6 +361,7 @@ export const processGPSData = (data: RawGPSData[], contract: ContractType = 'ENE
     stats.push({
       registration,
       vehicleName: rows[0].Vehicle,
+      vehicleGroup: rows[0].VehicleGroup?.trim() || 'Sin grupo',
       totalDistance: totalDist,
       maxSpeed,
       avgSpeed: speedPoints > 0 ? sumSpeed / speedPoints : 0,
@@ -434,6 +435,16 @@ export const processMultipleGPSFiles = async (files: File[]): Promise<ProcessedF
         totalEvents: stats.reduce((acc, v) => acc + v.eventCount, 0),
         byLevel,
       };
+
+      // Extract unique VehicleGroup values for service-level filtering
+      const vehicleGroupSet = new Set<string>();
+      parsed.data.forEach((row) => {
+        const group = row.VehicleGroup?.trim();
+        if (group && group.length > 0) {
+          vehicleGroupSet.add(group);
+        }
+      });
+      const availableVehicleGroups = Array.from(vehicleGroupSet).sort();
       
       const fileResult: ProcessedFileResult = {
         filename: file.name,
@@ -442,6 +453,7 @@ export const processMultipleGPSFiles = async (files: File[]): Promise<ProcessedF
         stats,
         summary,
         procedureCases: [],
+        availableVehicleGroups,
       };
 
       fileResult.procedureCases = generateProcedureCasesFromFile(fileResult, contract);

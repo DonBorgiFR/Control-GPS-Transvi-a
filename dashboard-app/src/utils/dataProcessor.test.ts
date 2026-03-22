@@ -344,6 +344,27 @@ describe('processMultipleGPSFiles', () => {
     expect(result[2].filename).toContain('Reporte Flota Diario.csv');
     expect(result[2].contract).toBe('GENERAL');
   });
+
+  it('extracts available VehicleGroup values and assigns vehicleGroup per vehicle', async () => {
+    const csv = [
+      'Vehicle,Registration,VehicleGroup,ActivityDate,EventType,EventTime,Speed,SpeedUnit,TripDistance,TripUnit,OnSiteTime,Location,Latitude,Longitude',
+      'Camion ENEL,RYBZ-48,GNL ENEL,13/03/2026,Actualizacion Programada,11:00:00,60,km/h,10,km,0,Ruta 68,-33,-71',
+      'Camion ENAP,PQRS-99,LPG ENAP,13/03/2026,Actualizacion Programada,11:01:00,45,km/h,5,km,0,Centro,-33,-71',
+    ].join('\n');
+
+    const file = new File([csv], 'Actividad Diaria ENE20260313.csv', { type: 'text/csv' });
+    const result = await processMultipleGPSFiles([file]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].availableVehicleGroups).toEqual(['GNL ENEL', 'LPG ENAP']);
+
+    const byRegistration = Object.fromEntries(
+      result[0].stats.map((vehicle) => [vehicle.registration, vehicle.vehicleGroup]),
+    );
+
+    expect(byRegistration['RYBZ-48']).toBe('GNL ENEL');
+    expect(byRegistration['PQRS-99']).toBe('LPG ENAP');
+  });
 });
 
 describe('aggregateTrendData', () => {
@@ -379,6 +400,7 @@ describe('aggregateVehicleHistory', () => {
       {
         registration,
         vehicleName: 'Camion Historial',
+        vehicleGroup: 'Flota',
         totalDistance: 100,
         maxSpeed: 95,
         avgSpeed: 60,
@@ -399,6 +421,7 @@ describe('aggregateVehicleHistory', () => {
       byLevel: { 0: 0, 1: 0, 2: 0, 3: 1, 4: 0 },
     },
     procedureCases: cases,
+    availableVehicleGroups: ['Flota'],
   });
 
   it('returns null when vehicle does not exist in files', () => {

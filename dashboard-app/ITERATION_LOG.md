@@ -534,6 +534,54 @@ Completar cobertura de ramas pendientes en `VehicleTable.tsx`, validar consisten
 ### Verificacion Final de Sesion
 - `npm run test -- --run` -> 40 tests OK.
 - `npm run test:coverage` -> OK.
+
+---
+
+## Iteracion 15 - Filtro por Servicio (VehicleGroup) y Branding Transviña
+
+### Objetivo
+Permitir filtrar toda la vista por grupo de servicio (VehicleGroup del CSV) y aplicar identidad visual corporativa Transviña en toda la UI.
+
+### Cambios Implementados
+
+1. **Filtro por Servicio (VehicleGroup)** — feature completa.
+- Se agregó `vehicleGroup: string` a `VehicleStats` y `availableVehicleGroups: string[]` a `ProcessedFileResult`.
+- `dataProcessor.ts`: extrae el campo `VehicleGroup` del CSV por vehiculo y calcula la lista única ordenada de grupos disponibles.
+- `App.tsx`: estado `selectedVehicleGroup` + dropdown "Servicio" en el encabezado (solo visible si hay grupos disponibles). Filtra `vehicleStats`, `historyFiles`, `trendData` y `selectedProcedureCases` según el grupo activo.
+- `HistoryView.tsx`: recibe `selectedVehicleGroup` y muestra indicador de filtro activo en el subtítulo.
+- Tests nuevos en `dataProcessor.test.ts`: verifica extracción de grupos y asignación por vehículo.
+
+2. **Limpieza de lint en código preexistente**.
+- `ProcedureBoard.tsx`: `const now = Date.now()` en render reemplazado por `useState(() => Date.now())`.
+- `VehicleProfile.tsx`: `CasesTable` convertido de función inline a componente React con `useState`.
+- `VehicleTable.tsx`: `useEffect` de clamping de página reemplazado por `currentPage` derivado.
+- `historyStorage.ts`: variables `_id`/`_fileName` con patrón `void id; void fileName`.
+- `eslint.config.js`: directorio `coverage/` añadido a `globalIgnores`.
+
+3. **Reparación de `Iniciar Dashboard.bat`**.
+- Añadida verificación de `package.json` antes de continuar.
+- Servidor npm forzado a directorio correcto con `cd /d "%~dp0dashboard-app"`.
+
+4. **Branding corporativo Transviña**.
+- Paleta reemplazada: púrpura `#c084fc` / `#1e1b4b` → dorado corporativo `#F5B800` y azul marino `#1B3D8C`.
+- Fondo de aplicación: gradiente `#0a1e3d → #061525` (navy puro).
+- Encabezado: logo tipográfico **TRANS** (blanco) **VIÑA** (dorado) + icono azul marino.
+- Afecta: `index.css`, `App.tsx`, `StatCard.tsx`, `FileUploader.tsx`, `VehicleTable.tsx`, `HistoryView.tsx`, `ProcedureBoard.tsx`, `VehicleProfile.tsx`.
+- Colores semánticos de nivel (verde/azul/amarillo/naranja/rojo) se mantienen sin cambio.
+
+### Verificacion Final de Sesion
+- `npm run test -- --run` → **43 tests OK** (0 fallos).
+- `npm run build` → **built in 3.50s** (0 warnings, 0 errores).
+- `npm run lint` → **sin errores ni warnings**.
+
+### Estado de Criterios de Entrega
+- [x] Tests 0 fallos, cobertura >= 80% en utils.
+- [x] Build sin warnings.
+- [x] Exportación PDF funcional.
+- [x] Filtro por grupo de servicio operativo en todas las vistas.
+- [x] Identidad visual Transviña aplicada (azul marino + dorado).
+- [x] Lint limpio (0 errores, 0 warnings).
+- [ ] Corrida guiada con datos reales en browser (validación operacional manual).
 - `npm run build` -> OK (sin warnings).
 
 ### Cobertura Relevante

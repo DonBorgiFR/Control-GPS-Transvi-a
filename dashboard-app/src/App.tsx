@@ -44,6 +44,7 @@ function App() {
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
   const [procedureCasesByFile, setProcedureCasesByFile] = useState<Record<string, ProcedureCase[]>>({});
   const [selectedVehicleRegistration, setSelectedVehicleRegistration] = useState<string | null>(null);
+  const [selectedVehicleGroup, setSelectedVehicleGroup] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -105,8 +106,49 @@ function App() {
   
   const trendData = useMemo(() => {
     if (!processedFiles || processedFiles.length === 0) return [];
-    return aggregateTrendData(processedFiles);
-  }, [processedFiles]);
+    if (!selectedVehicleGroup) {
+      return aggregateTrendData(processedFiles);
+    }
+
+    const filteredFiles = processedFiles.map((entry) => {
+      const filteredStats = entry.stats.filter((vehicle) => vehicle.vehicleGroup === selectedVehicleGroup);
+      const byLevel: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+      filteredStats.forEach((vehicle) => {
+        byLevel[vehicle.driverLevel] = (byLevel[vehicle.driverLevel] || 0) + 1;
+      });
+
+      const activeVehicles = filteredStats.filter((vehicle) => vehicle.status === 'Active');
+      const avgSpeedFleet =
+        activeVehicles.length > 0
+          ? activeVehicles.reduce((acc, vehicle) => acc + vehicle.avgSpeed, 0) / activeVehicles.length
+          : 0;
+
+      return {
+        ...entry,
+        stats: filteredStats,
+        summary: {
+          totalVehicles: filteredStats.length,
+          activeVehicles: activeVehicles.length,
+          totalDistance: filteredStats.reduce((acc, vehicle) => acc + vehicle.totalDistance, 0),
+          maxSpeedFleet: filteredStats.length > 0 ? Math.max(...filteredStats.map((vehicle) => vehicle.maxSpeed)) : 0,
+          avgSpeedFleet,
+          totalEvents: filteredStats.reduce((acc, vehicle) => acc + vehicle.eventCount, 0),
+          byLevel,
+        },
+        procedureCases: entry.procedureCases.filter((procedureCase) =>
+          filteredStats.some((vehicle) => vehicle.registration === procedureCase.registration),
+        ),
+      };
+    });
+
+    return aggregateTrendData(filteredFiles);
+  }, [processedFiles, selectedVehicleGroup]);
+
+  const vehicleStats = useMemo(() => {
+    if (!selectedFile) return [];
+    if (!selectedVehicleGroup) return selectedFile.stats;
+    return selectedFile.stats.filter((vehicle) => vehicle.vehicleGroup === selectedVehicleGroup);
+  }, [selectedFile, selectedVehicleGroup]);
 
   const summary = useMemo<FleetSummary>(() => {
     if (!selectedFile) {
@@ -120,13 +162,30 @@ function App() {
         byLevel: {},
       };
     }
-    return selectedFile.summary;
-  }, [selectedFile]);
+    // Use filtered vehicles if a group is selected
+    const filteredStats = vehicleStats;
+    const totalVehicles = filteredStats.length;
+    const byLevel: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+    filteredStats.forEach((v) => {
+      byLevel[v.driverLevel] = (byLevel[v.driverLevel] || 0) + 1;
+    });
 
-  const vehicleStats = useMemo(() => {
-    if (!selectedFile) return [];
-    return selectedFile.stats;
-  }, [selectedFile]);
+    const activeVehicles = filteredStats.filter((v) => v.status === 'Active');
+    const avgSpeedFleet =
+      activeVehicles.length > 0
+        ? activeVehicles.reduce((acc, vehicle) => acc + vehicle.avgSpeed, 0) / activeVehicles.length
+        : 0;
+    
+    return {
+      totalVehicles,
+      activeVehicles: activeVehicles.length,
+      totalDistance: filteredStats.reduce((acc, v) => acc + v.totalDistance, 0),
+      maxSpeedFleet: totalVehicles > 0 ? Math.max(...filteredStats.map((v) => v.maxSpeed)) : 0,
+      avgSpeedFleet,
+      totalEvents: filteredStats.reduce((acc, v) => acc + v.eventCount, 0),
+      byLevel,
+    };
+  }, [selectedFile, vehicleStats]);
 
   const excellenceCandidates = useMemo(() => {
     return vehicleStats
@@ -146,8 +205,56 @@ function App() {
 
   const selectedProcedureCases = useMemo(() => {
     if (!selectedFile) return [];
-    return procedureCasesByFile[selectedFile.filename] ?? selectedFile.procedureCases;
-  }, [selectedFile, procedureCasesByFile]);
+    let cases = procedureCasesByFile[selectedFile.filename] ?? selectedFile.procedureCases;
+    
+    // Filter by vehicle group if selected
+    if (selectedVehicleGroup && selectedVehicleGroup !== '*') {
+      cases = cases.filter((procedureCase) => {
+        // Find the vehicle to check its group
+        const vehicle = vehicleStats.find((v) => v.registration === procedureCase.registration);
+        return vehicle && vehicle.vehicleGroup === selectedVehicleGroup;
+      });
+    }
+    
+    return cases;
+  }, [selectedFile, procedureCasesByFile, vehicleStats, selectedVehicleGroup]);
+
+  const historyFiles = useMemo(() => {
+    if (!processedFiles || !selectedVehicleGroup) {
+      return processedFiles ?? [];
+    }
+
+    return processedFiles.map((entry) => {
+      const filteredStats = entry.stats.filter((vehicle) => vehicle.vehicleGroup === selectedVehicleGroup);
+      const byLevel: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+      filteredStats.forEach((vehicle) => {
+        byLevel[vehicle.driverLevel] = (byLevel[vehicle.driverLevel] || 0) + 1;
+      });
+
+      const activeVehicles = filteredStats.filter((vehicle) => vehicle.status === 'Active');
+      const avgSpeedFleet =
+        activeVehicles.length > 0
+          ? activeVehicles.reduce((acc, vehicle) => acc + vehicle.avgSpeed, 0) / activeVehicles.length
+          : 0;
+
+      return {
+        ...entry,
+        stats: filteredStats,
+        summary: {
+          totalVehicles: filteredStats.length,
+          activeVehicles: activeVehicles.length,
+          totalDistance: filteredStats.reduce((acc, vehicle) => acc + vehicle.totalDistance, 0),
+          maxSpeedFleet: filteredStats.length > 0 ? Math.max(...filteredStats.map((vehicle) => vehicle.maxSpeed)) : 0,
+          avgSpeedFleet,
+          totalEvents: filteredStats.reduce((acc, vehicle) => acc + vehicle.eventCount, 0),
+          byLevel,
+        },
+        procedureCases: entry.procedureCases.filter((procedureCase) =>
+          filteredStats.some((vehicle) => vehicle.registration === procedureCase.registration),
+        ),
+      };
+    });
+  }, [processedFiles, selectedVehicleGroup]);
 
   const procedureSummary = useMemo(() => {
     const now = Date.now();
@@ -244,37 +351,60 @@ function App() {
   return (
     <div style={{ 
       minHeight: '100vh', 
-      background: 'linear-gradient(to bottom, #1e1b4b, #0f172a)',
+      background: 'linear-gradient(to bottom, #0a1e3d, #061525)',
       padding: '2rem'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ padding: '0.75rem', background: '#c084fc', borderRadius: '1rem', fontSize: '1.5rem' }}>
-              📊
+            <div style={{ padding: '0.75rem', background: '#1B3D8C', borderRadius: '1rem', fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '3rem' }}>
+              🚛
             </div>
             <div>
               <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: 'white' }}>
-                Dashboard GPS <span style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: 'rgba(192,132,252,0.3)', textUnderlineOffset: '8px' }}>2026</span>
+                <span style={{ color: 'white' }}>TRANS</span><span style={{ color: '#F5B800' }}>VIÑA</span> <span style={{ color: '#94a3b8', fontSize: '1.2rem', fontWeight: 400 }}>· Dashboard GPS 2026</span>
               </h1>
-              <p style={{ color: '#94a3b8', marginTop: '0.25rem' }}>Transviña - Monitoreo operacional de velocidad</p>
+              <p style={{ color: '#94a3b8', marginTop: '0.25rem' }}>Monitoreo operacional de velocidad · Prevención de Riesgos</p>
             </div>
           </div>
           
           {processedFiles && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <label style={{ color: '#94a3b8' }}>Ver datos de:</label>
-              <select 
-                value={selectedFileIndex ?? 0}
-                onChange={(e) => setSelectedFileIndex(parseInt(e.target.value))}
-                style={{ padding: '0.25rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
-              >
-                {processedFiles.map((file, index) => (
-                  <option key={index} value={index}>
-                    {file.filename} {file.date ? `(${file.date.toLocaleDateString()})` : ''}
-                  </option>
-                ))}
-              </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <label style={{ color: '#94a3b8' }}>Archivo:</label>
+                <select 
+                  value={selectedFileIndex ?? 0}
+                  onChange={(e) => {
+                    const index = parseInt(e.target.value);
+                    setSelectedFileIndex(index);
+                    // Reset vehicle group filter when file changes
+                    setSelectedVehicleGroup(null);
+                  }}
+                  style={{ padding: '0.25rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                >
+                  {processedFiles.map((file, index) => (
+                    <option key={index} value={index}>
+                      {file.filename} {file.date ? `(${file.date.toLocaleDateString()})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedFile && selectedFile.availableVehicleGroups.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <label style={{ color: '#94a3b8' }}>Servicio:</label>
+                  <select 
+                    value={selectedVehicleGroup || '*'}
+                    onChange={(e) => setSelectedVehicleGroup(e.target.value === '*' ? null : e.target.value)}
+                    style={{ padding: '0.25rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(52,211,153,0.3)', background: 'rgba(16,185,129,0.1)', color: 'white' }}
+                  >
+                    <option value="*">Todos los servicios</option>
+                    {selectedFile.availableVehicleGroups.map((group) => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
           
@@ -283,6 +413,7 @@ function App() {
               onClick={async () => {
                 setProcessedFiles(null);
                 setSelectedFileIndex(null);
+                setSelectedVehicleGroup(null);
                 setProcedureCasesByFile({});
                 try {
                   await clearProcessedFiles();
@@ -299,7 +430,7 @@ function App() {
           {selectedFile && (
             <button
               onClick={() => void handleExportFleetPDF()}
-              style={{ padding: '0.625rem 1.5rem', borderRadius: '0.75rem', background: 'rgba(168,85,247,0.2)', border: '1px solid rgba(192,132,252,0.45)', color: '#f5d0fe', cursor: 'pointer' }}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: '0.75rem', background: 'rgba(27,61,140,0.25)', border: '1px solid rgba(245,184,0,0.5)', color: '#fef3c7', cursor: 'pointer' }}
             >
               Exportar PDF Flota
             </button>
@@ -399,8 +530,8 @@ function App() {
                 style={{
                   padding: '0.5rem 1rem',
                   borderRadius: '0.5rem',
-                  background: viewMode === 'TREND' ? 'rgba(192,132,252,0.2)' : 'transparent',
-                  color: viewMode === 'TREND' ? '#c084fc' : '#94a3b8',
+                  background: viewMode === 'TREND' ? 'rgba(245,184,0,0.15)' : 'transparent',
+                  color: viewMode === 'TREND' ? '#F5B800' : '#94a3b8',
                   border: 'none',
                   cursor: 'pointer'
                 }}
@@ -417,8 +548,8 @@ function App() {
                 style={{
                   padding: '0.5rem 1rem',
                   borderRadius: '0.5rem',
-                  background: viewMode === 'DETAIL' ? 'rgba(192,132,252,0.2)' : 'transparent',
-                  color: viewMode === 'DETAIL' ? '#c084fc' : '#94a3b8',
+                  background: viewMode === 'DETAIL' ? 'rgba(245,184,0,0.15)' : 'transparent',
+                  color: viewMode === 'DETAIL' ? '#F5B800' : '#94a3b8',
                   border: 'none',
                   cursor: 'pointer'
                 }}
@@ -435,8 +566,8 @@ function App() {
                 style={{
                   padding: '0.5rem 1rem',
                   borderRadius: '0.5rem',
-                  background: viewMode === 'PROCEDURE' ? 'rgba(192,132,252,0.2)' : 'transparent',
-                  color: viewMode === 'PROCEDURE' ? '#c084fc' : '#94a3b8',
+                  background: viewMode === 'PROCEDURE' ? 'rgba(245,184,0,0.15)' : 'transparent',
+                  color: viewMode === 'PROCEDURE' ? '#F5B800' : '#94a3b8',
                   border: 'none',
                   cursor: 'pointer'
                 }}
@@ -460,7 +591,7 @@ function App() {
 
             {viewMode === 'HISTORY' ? (
               <Suspense fallback={<SectionFallback label="historial" />}>
-                <HistoryView files={processedFiles} />
+                <HistoryView files={historyFiles} selectedVehicleGroup={selectedVehicleGroup} />
               </Suspense>
             ) : viewMode === 'TREND' && trendData.length > 0 ? (
               <Suspense fallback={<SectionFallback label="tendencias" />}>
@@ -588,12 +719,12 @@ function App() {
               <div style={{
                 width: '3rem',
                 height: '3rem',
-                border: '4px solid #c084fc',
+                border: '4px solid #F5B800',
                 borderTopColor: 'transparent',
                 borderRadius: '50%',
                 animation: 'spin 1s linear infinite'
               }} />
-              <p style={{ color: '#c084fc', fontWeight: 500, animation: 'pulse 2s ease-in-out infinite' }}>
+              <p style={{ color: '#F5B800', fontWeight: 500, animation: 'pulse 2s ease-in-out infinite' }}>
                 Procesando Telemetría...
               </p>
             </div>
@@ -608,9 +739,9 @@ function App() {
           right: '1.3rem',
           bottom: '1.2rem',
           borderRadius: '999px',
-          border: '1px solid rgba(192,132,252,0.55)',
-          background: 'rgba(168,85,247,0.24)',
-          color: '#f5d0fe',
+          border: '1px solid rgba(245,184,0,0.5)',
+          background: 'rgba(27,61,140,0.3)',
+          color: '#fef3c7',
           fontWeight: 600,
           padding: '0.7rem 1rem',
           cursor: 'pointer',

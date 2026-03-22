@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -77,6 +78,57 @@ const LevelBadge: React.FC<{ level: number; size?: 'sm' | 'lg' }> = ({ level, si
 );
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+const CasesTable: React.FC<{ cases: ProcedureCase[] }> = ({ cases }) => {
+  const [referenceNow] = useState(() => Date.now());
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', color: '#e2e8f0' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            {['Jornada', 'Nivel', 'Severidad', 'Acción Requerida', 'Estado', 'Vence'].map((h) => (
+              <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#cbd5e1', fontWeight: 700, fontSize: '0.72rem' }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {cases.map((c) => {
+            const isOverdue = c.status !== 'CLOSED' && Date.parse(c.dueAt) < referenceNow;
+            return (
+              <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8' }}>{c.fileName.replace(/\.csv$/i, '')}</td>
+                <td style={{ padding: '0.5rem 0.75rem' }}>
+                  <span style={{ color: LEVEL_COLOR[c.driverLevel] }}>{c.driverLevel}</span>
+                </td>
+                <td style={{ padding: '0.5rem 0.75rem', color: c.severity === 'Grave' ? '#f87171' : c.severity === 'Moderado' ? '#fbbf24' : '#94a3b8' }}>
+                  {c.severity}
+                </td>
+                <td style={{ padding: '0.5rem 0.75rem', color: '#cbd5e1', maxWidth: '200px' }}>{c.requiredAction.replace(/_/g, ' ')}</td>
+                <td style={{ padding: '0.5rem 0.75rem' }}>
+                  <span style={{
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '0.3rem',
+                    fontSize: '0.68rem',
+                    background: c.status === 'CLOSED' ? 'rgba(52,211,153,0.1)' : 'rgba(27,61,140,0.2)',
+                    color: c.status === 'CLOSED' ? '#34d399' : '#F5B800',
+                  }}>
+                    {STATUS_LABEL[c.status]}
+                  </span>
+                </td>
+                <td style={{ padding: '0.5rem 0.75rem', color: isOverdue ? '#f87171' : '#64748b', fontSize: '0.75rem' }}>
+                  {new Date(c.dueAt).toLocaleDateString()}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const formatDateWithDay = (d: string): string => {
   if (d.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -217,9 +269,9 @@ export const VehicleProfile: React.FC<VehicleProfileProps> = ({ summary, onBack 
               <Line
                 type="monotone"
                 dataKey="driverLevel"
-                stroke="#c084fc"
+                stroke="#F5B800"
                 strokeWidth={2}
-                dot={{ r: 4, fill: '#c084fc' }}
+                dot={{ r: 4, fill: '#F5B800' }}
                 activeDot={{ r: 6 }}
                 name="Nivel"
               />
@@ -300,14 +352,14 @@ export const VehicleProfile: React.FC<VehicleProfileProps> = ({ summary, onBack 
               Casos de Procedimiento — {summary.registration}
             </h3>
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <span style={{ color: '#c084fc', fontSize: '0.75rem' }}>Abiertos: {openCases.length}</span>
+              <span style={{ color: '#F5B800', fontSize: '0.75rem' }}>Abiertos: {openCases.length}</span>
               <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Cerrados: {closedCases.length}</span>
             </div>
           </div>
           <CasesTable cases={summary.allCases} />
            {openCases.length > 0 && (
              <p style={{ color: '#94a3b8', fontSize: '0.72rem', margin: '0.6rem 0 0', borderLeft: '2px solid rgba(148,163,184,0.3)', paddingLeft: '0.6rem' }}>
-               Para avanzar el estado de los casos abiertos, accede a la vista <strong style={{ color: '#c084fc' }}>Procedimiento</strong> desde la barra superior.
+               Para avanzar el estado de los casos abiertos, accede a la vista <strong style={{ color: '#F5B800' }}>Procedimiento</strong> desde la barra superior.
                Desde ahí puedes revisar la bitácora de actuaciones, asignar responsables y exportar la ficha PDF de cada caso.
              </p>
            )}
@@ -317,49 +369,3 @@ export const VehicleProfile: React.FC<VehicleProfileProps> = ({ summary, onBack 
   );
 };
 
-const CasesTable: React.FC<{ cases: ProcedureCase[] }> = ({ cases }) => (
-  <div style={{ overflowX: 'auto' }}>
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', color: '#e2e8f0' }}>
-      <thead>
-        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          {['Jornada', 'Nivel', 'Severidad', 'Acción Requerida', 'Estado', 'Vence'].map((h) => (
-            <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#cbd5e1', fontWeight: 700, fontSize: '0.72rem' }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {cases.map((c) => {
-          const isOverdue = c.status !== 'CLOSED' && Date.parse(c.dueAt) < Date.now();
-          return (
-            <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-              <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8' }}>{c.fileName.replace(/\.csv$/i, '')}</td>
-              <td style={{ padding: '0.5rem 0.75rem' }}>
-                <span style={{ color: LEVEL_COLOR[c.driverLevel] }}>{c.driverLevel}</span>
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', color: c.severity === 'Grave' ? '#f87171' : c.severity === 'Moderado' ? '#fbbf24' : '#94a3b8' }}>
-                {c.severity}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', color: '#cbd5e1', maxWidth: '200px' }}>{c.requiredAction.replace(/_/g, ' ')}</td>
-              <td style={{ padding: '0.5rem 0.75rem' }}>
-                <span style={{
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '0.3rem',
-                  fontSize: '0.68rem',
-                  background: c.status === 'CLOSED' ? 'rgba(52,211,153,0.1)' : 'rgba(192,132,252,0.1)',
-                  color: c.status === 'CLOSED' ? '#34d399' : '#c084fc',
-                }}>
-                  {STATUS_LABEL[c.status]}
-                </span>
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', color: isOverdue ? '#f87171' : '#64748b', fontSize: '0.75rem' }}>
-                {new Date(c.dueAt).toLocaleDateString()}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-);

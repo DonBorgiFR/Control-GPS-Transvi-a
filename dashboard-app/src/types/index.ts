@@ -30,6 +30,7 @@ export interface SpeedEvent {
 export interface VehicleStats {
   registration: string;
   vehicleName: string;
+  vehicleGroup: string;
   totalDistance: number;
   maxSpeed: number;
   avgSpeed: number;
@@ -57,6 +58,7 @@ export interface ProcessedFileResult {
   stats: VehicleStats[];
   summary: FleetSummary;
   procedureCases: import('./procedures').ProcedureCase[];
+  availableVehicleGroups: string[];
 }
 
 export interface TrendDataPoint {

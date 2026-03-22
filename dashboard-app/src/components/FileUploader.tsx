@@ -24,7 +24,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         cursor: 'pointer',
         height: '16rem',
         border: '2px dashed',
-        borderColor: isDragging ? '#c084fc' : 'rgba(255,255,255,0.1)',
+        borderColor: isDragging ? '#F5B800' : 'rgba(255,255,255,0.1)',
         borderRadius: '1rem',
         transition: 'all 0.3s',
         display: 'flex',
@@ -32,13 +32,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '2rem',
-        background: isDragging ? 'rgba(192,132,252,0.1)' : 'rgba(255,255,255,0.02)'
+        background: isDragging ? 'rgba(245,184,0,0.08)' : 'rgba(255,255,255,0.02)'
       }}
     >
       <div style={{ 
         padding: '1rem', 
         borderRadius: '50%', 
-        background: 'rgba(192,132,252,0.2)', 
+        background: 'rgba(27,61,140,0.3)', 
         marginBottom: '1rem',
         fontSize: '2rem'
       }}>

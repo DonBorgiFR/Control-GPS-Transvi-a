@@ -28,7 +28,7 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, unit, icon: Ic
         top: 0, 
         right: 0, 
         padding: '2rem', 
-        color: 'rgba(192,132,252,0.05)',
+        color: 'rgba(245,184,0,0.06)',
         fontSize: '5rem',
         margin: '-1rem',
         transition: 'color 0.3s'
@@ -36,7 +36,7 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, unit, icon: Ic
         {Icon()}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} title={tooltip}>
-        <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(192,132,252,0.1)', color: '#c084fc', fontSize: '1.5rem' }}>
+        <div style={{ padding: '0.625rem', borderRadius: '0.75rem', background: 'rgba(27,61,140,0.2)', color: '#F5B800', fontSize: '1.5rem' }}>
           {Icon()}
         </div>
         <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{title}</span>

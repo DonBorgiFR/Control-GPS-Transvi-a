@@ -7,6 +7,7 @@ import type { VehicleStats } from '../types';
 const createVehicle = (index: number, overrides: Partial<VehicleStats> = {}): VehicleStats => ({
   registration: `PPU-${index.toString().padStart(3, '0')}`,
   vehicleName: `Camion ${index}`,
+  vehicleGroup: 'Servicio Test',
   totalDistance: index * 10,
   maxSpeed: 50 + (index % 40),
   avgSpeed: 45 + (index % 20),

@@ -211,7 +211,11 @@ export const getProcedureLogsByCase = async (caseId: string): Promise<ProcedureE
     const logs = await runRequest(index.getAll(caseId)) as StoredProcedureLog[];
 
     return logs
-      .map(({ id: _id, fileName: _fileName, ...rest }) => rest)
+      .map(({ id, fileName, ...rest }) => {
+        void id;
+        void fileName;
+        return rest;
+      })
       .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   } finally {
     db.close();

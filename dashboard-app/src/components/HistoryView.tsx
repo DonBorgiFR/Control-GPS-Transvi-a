@@ -8,6 +8,7 @@ type TimeRange = 'ALL' | '90' | '30' | '7';
 
 interface HistoryViewProps {
   files: ProcessedFileResult[];
+  selectedVehicleGroup?: string | null;
 }
 
 const filterByRange = (files: ProcessedFileResult[], range: TimeRange): ProcessedFileResult[] => {
@@ -24,7 +25,7 @@ const panelStyle: React.CSSProperties = {
   padding: '1.5rem',
 };
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ files }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ files, selectedVehicleGroup }) => {
   const [range, setRange] = useState<TimeRange>('ALL');
 
   const filtered = useMemo(() => filterByRange(files, range), [files, range]);
@@ -75,6 +76,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ files }) => {
           <h2 style={{ color: 'white', margin: 0, fontSize: '1.1rem' }}>Historial de Jornadas</h2>
           <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '0.25rem' }}>
             {filtered.length} jornada{filtered.length !== 1 ? 's' : ''} en el periodo. Los datos se almacenan localmente en este equipo.
+            {selectedVehicleGroup ? ` Filtro activo: ${selectedVehicleGroup}.` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -86,8 +88,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ files }) => {
                 padding: '0.35rem 0.75rem',
                 borderRadius: '0.5rem',
                 border: '1px solid rgba(255,255,255,0.1)',
-                background: range === r ? 'rgba(192,132,252,0.2)' : 'rgba(255,255,255,0.03)',
-                color: range === r ? '#c084fc' : '#94a3b8',
+                background: range === r ? 'rgba(245,184,0,0.15)' : 'rgba(255,255,255,0.03)',
+                color: range === r ? '#F5B800' : '#94a3b8',
                 cursor: 'pointer',
                 fontSize: '0.8rem',
               }}
@@ -136,7 +138,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ files }) => {
               value: `${aggregate.maxSpeed.toFixed(0)} km/h`,
               color: '#fbbf24',
             },
-            { label: 'Casos Abiertos', value: aggregate.allOpen, color: '#c084fc' },
+            { label: 'Casos Abiertos', value: aggregate.allOpen, color: '#F5B800' },
             { label: 'Vehíc. Nivel 3-4', value: aggregate.level3Plus, color: '#fb923c' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...panelStyle, padding: '1rem' }}>

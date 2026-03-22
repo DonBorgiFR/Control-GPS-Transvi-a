@@ -88,7 +88,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     'Se deriva a evaluacion de continuidad operativa por nivel critico.',
   ];
 
-  const now = Date.now();
+  const [referenceNow] = useState(() => Date.now());
 
   const filteredCases = useMemo(() => {
     return cases.filter((procedureCase) => {
@@ -96,22 +96,23 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         return false;
       }
 
-      if (onlyOverdue && Date.parse(procedureCase.dueAt) >= now) {
+      if (onlyOverdue && Date.parse(procedureCase.dueAt) >= referenceNow) {
         return false;
       }
 
       return true;
     });
-  }, [cases, statusFilter, onlyOverdue, now]);
+  }, [cases, statusFilter, onlyOverdue, referenceNow]);
 
   const selectedCase = useMemo(() => {
     if (!selectedCaseId) return filteredCases[0] ?? null;
     return filteredCases.find((entry) => entry.id === selectedCaseId) ?? filteredCases[0] ?? null;
   }, [filteredCases, selectedCaseId]);
 
+  const visibleCaseLog = selectedCase ? caseLog : [];
+
   useEffect(() => {
     if (!selectedCase) {
-      setCaseLog([]);
       return;
     }
 
@@ -130,12 +131,12 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
       active = false;
       clearTimeout(timer);
     };
-  }, [selectedCase?.id, selectedCase?.status]);
+  }, [selectedCase]);
 
   const selectedNextStatus = selectedCase ? nextStatusForAction(selectedCase.status) : null;
 
   const pendingCount = cases.filter((entry) => entry.status !== 'CLOSED').length;
-  const overdueCount = cases.filter((entry) => Date.parse(entry.dueAt) < now && entry.status !== 'CLOSED').length;
+  const overdueCount = cases.filter((entry) => Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED').length;
 
   if (cases.length === 0) {
     return (
@@ -225,7 +226,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
             <tbody>
               {filteredCases.map((entry) => {
                 const isSelected = selectedCase?.id === entry.id;
-                const isOverdue = Date.parse(entry.dueAt) < now && entry.status !== 'CLOSED';
+                const isOverdue = Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED';
                 return (
                   <tr
                     key={entry.id}
@@ -233,7 +234,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                     style={{
                       borderBottom: '1px solid rgba(255,255,255,0.05)',
                       cursor: 'pointer',
-                      background: isSelected ? 'rgba(192,132,252,0.15)' : 'transparent',
+                      background: isSelected ? 'rgba(27,61,140,0.25)' : 'transparent',
                     }}
                   >
                     <td style={{ padding: '0.6rem', color: 'white' }}>{entry.registration}</td>
@@ -287,9 +288,9 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                            borderRadius: '9999px',
                            fontSize: '0.63rem',
                            fontWeight: isNow ? 700 : 400,
-                           background: isDone ? 'rgba(52,211,153,0.12)' : isNow ? 'rgba(192,132,252,0.22)' : 'rgba(255,255,255,0.03)',
+                           background: isDone ? 'rgba(52,211,153,0.12)' : isNow ? 'rgba(27,61,140,0.3)' : 'rgba(255,255,255,0.03)',
                            color: isDone ? '#34d399' : isNow ? '#e9d5ff' : '#475569',
-                           border: `1px solid ${isDone ? 'rgba(52,211,153,0.35)' : isNow ? 'rgba(192,132,252,0.5)' : 'rgba(255,255,255,0.06)'}`,
+                           border: `1px solid ${isDone ? 'rgba(52,211,153,0.35)' : isNow ? 'rgba(245,184,0,0.45)' : 'rgba(255,255,255,0.06)'}`,
                            whiteSpace: 'nowrap',
                          }}
                        >
@@ -370,7 +371,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                     padding: '0.45rem 0.8rem',
                     borderRadius: '0.5rem',
                     border: '1px solid rgba(255,255,255,0.15)',
-                    background: 'rgba(168,85,247,0.2)',
+                    background: 'rgba(27,61,140,0.25)',
                     color: '#e9d5ff',
                     cursor: 'pointer',
                   }}
@@ -461,7 +462,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
               </div>
             )}
 
-            {caseLog.length > 0 && (
+            {visibleCaseLog.length > 0 && (
               <div
                 style={{
                   marginTop: '0.4rem',
@@ -488,7 +489,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                     overflowY: 'auto',
                   }}
                 >
-                  {caseLog.map((entry, index) => (
+                  {visibleCaseLog.map((entry, index) => (
                     <div
                       key={index}
                       style={{
@@ -506,7 +507,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                           marginBottom: '0.2rem',
                         }}
                       >
-                        <span style={{ color: '#c084fc', fontWeight: 600 }}>
+                        <span style={{ color: '#F5B800', fontWeight: 600 }}>
                           {STATUS_LABEL[entry.nextStatus]}
                         </span>
                         <span style={{ color: '#64748b' }}>
