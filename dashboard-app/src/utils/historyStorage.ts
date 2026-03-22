@@ -1,4 +1,4 @@
-import type { ProcessedFileResult } from '../types';
+import type { ProcessedFileResult, VehicleStats } from '../types';
 import type { ProcedureCase, ProcedureEventLog, ProcedureRole, ProcedureStatus } from '../types/procedures';
 
 const DB_NAME = 'transvina-gps-history';
@@ -6,8 +6,14 @@ const DB_VERSION = 1;
 const FILES_STORE = 'processedFiles';
 const LOGS_STORE = 'procedureLogs';
 
-interface StoredProcessedFile extends Omit<ProcessedFileResult, 'date'> {
+type StoredVehicleStats = Omit<VehicleStats, 'vehicleGroup'> & {
+  vehicleGroup?: string | null;
+};
+
+interface StoredProcessedFile extends Omit<ProcessedFileResult, 'date' | 'stats' | 'availableVehicleGroups'> {
   date: string | null;
+  stats: StoredVehicleStats[];
+  availableVehicleGroups?: string[];
 }
 
 interface StoredProcedureLog extends ProcedureEventLog {
@@ -20,9 +26,26 @@ const toStoredFile = (entry: ProcessedFileResult): StoredProcessedFile => ({
   date: entry.date ? entry.date.toISOString() : null,
 });
 
+const normalizeVehicleGroup = (value?: string | null): string => {
+  const normalized = value?.trim();
+  return normalized ? normalized : 'Sin grupo';
+};
+
 const toRuntimeFile = (entry: StoredProcessedFile): ProcessedFileResult => ({
   ...entry,
   date: entry.date ? new Date(entry.date) : null,
+  stats: (entry.stats ?? []).map((vehicle) => ({
+    ...vehicle,
+    vehicleGroup: normalizeVehicleGroup(vehicle.vehicleGroup),
+  })),
+  availableVehicleGroups:
+    entry.availableVehicleGroups
+      ?.map((group) => normalizeVehicleGroup(group))
+      .filter((group, index, list) => list.indexOf(group) === index)
+      .sort((a, b) => a.localeCompare(b)) ??
+    Array.from(
+      new Set((entry.stats ?? []).map((vehicle) => normalizeVehicleGroup(vehicle.vehicleGroup))),
+    ).sort((a, b) => a.localeCompare(b)),
 });
 
 const openDatabase = async (): Promise<IDBDatabase> => {

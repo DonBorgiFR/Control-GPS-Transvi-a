@@ -390,7 +390,7 @@ function App() {
                 </select>
               </div>
 
-              {selectedFile && selectedFile.availableVehicleGroups.length > 0 && (
+              {selectedFile && (selectedFile.availableVehicleGroups?.length ?? 0) > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <label style={{ color: '#94a3b8' }}>Servicio:</label>
                   <select 

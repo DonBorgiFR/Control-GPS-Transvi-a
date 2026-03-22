@@ -165,6 +165,35 @@ Completar pendiente de cobertura global y cerrar alcance final de RouteMap para 
 
 ### Verificacion de Cobertura
 - `npm run test:coverage` -> OK.
+
+---
+
+## Iteracion 16 - Hotfix de Pantalla en Blanco por Historial Legacy
+
+### Objetivo
+Corregir el crash que hacía desaparecer la interfaz tras unos instantes cuando la app cargaba historial antiguo desde IndexedDB.
+
+### Causa Raiz
+- El dashboard hidrataba archivos persistidos antes de la incorporación de `vehicleGroup` y `availableVehicleGroups`.
+- Esos registros legacy no traían las nuevas propiedades, y el render del encabezado evaluaba `selectedFile.availableVehicleGroups.length`.
+- Resultado: segundo render con excepción en tiempo de ejecución y pantalla visible solo por un instante antes de quedar el fondo.
+
+### Cambios Implementados
+1. `src/utils/historyStorage.ts`
+- Se agregó normalización backward-compatible para registros antiguos.
+- Cada vehículo recuperado desde IndexedDB recibe `vehicleGroup: 'Sin grupo'` cuando el campo no existe.
+- Cada archivo recompone `availableVehicleGroups` desde `stats` si no viene persistido.
+
+2. `src/App.tsx`
+- Se agregó guarda defensiva en el render: `selectedFile.availableVehicleGroups?.length ?? 0`.
+
+### Verificacion Final de Sesion
+- `npm run test -- --run` -> 43 tests OK.
+- `npm run build` -> OK (sin warnings).
+
+### Resultado Operacional
+- La app vuelve a abrir correctamente aunque exista historial local de versiones anteriores.
+- No requiere borrar IndexedDB ni recargar manualmente datos CSV para recuperarse.
 - Cobertura global: Statements 91.91%, Branches 77.60%, Functions 92.47%, Lines 93.99%.
 
 ### Verificacion Final de Sesion
