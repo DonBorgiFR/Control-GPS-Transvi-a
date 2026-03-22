@@ -71,7 +71,7 @@ dashboard-app/
 | `npm run build` | Compilar para producción (`dist/`) |
 | `npm run preview` | Previsualizar el build de producción |
 | `npm run test` | Ejecutar suite de pruebas unitarias |
-| `npm run test:coverage` | Pruebas con reporte de cobertura |
+| `npm run test:coverage` | Pruebas con reporte de cobertura (`coverage/index.html`) |
 | `npm run lint` | Verificar estilo de código |
 
 ## Tecnologías

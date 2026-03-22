@@ -9,14 +9,8 @@ Doble clic sobre **`Iniciar Dashboard.bat`** en la carpeta raíz del proyecto.
 
 El script instala dependencias la primera vez, levanta el servidor y abre el navegador automáticamente en http://localhost:5173.
 
-### Opción B — Terminal
-```bash
-cd dashboard-app
-npm install        # solo la primera vez
-npm run dev
-```
-
-Abrir http://localhost:5173 en el navegador.
+### Opción B — Configuración técnica
+Para instalación por terminal y comandos técnicos, usar la guía principal en **`dashboard-app/README.md`**.
 
 ---
 
