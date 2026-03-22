@@ -31,6 +31,104 @@ const ACTION_LABEL: Record<ProcedureCase['requiredAction'], string> = {
   OPERATIONAL_CONTINUITY_REVIEW: 'Evaluacion de Continuidad Operativa',
 };
 
+const ROLE_LABEL: Record<'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS', string> = {
+  SUPERVISOR: 'Supervisor',
+  JEFE_OPERACIONES: 'Jefe de Operaciones',
+  PREVENCION_RIESGOS: 'Prevencion de Riesgos',
+};
+
+const suggestedRolesByCase = (
+  procedureCase: ProcedureCase,
+  nextStatus: ProcedureStatus | null,
+): Array<'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS'> => {
+  if (procedureCase.driverLevel >= 4 || procedureCase.severity === 'Grave') {
+    return ['PREVENCION_RIESGOS', 'JEFE_OPERACIONES', 'SUPERVISOR'];
+  }
+
+  if (nextStatus === 'ACTION_PROPOSED' || nextStatus === 'APPROVED') {
+    return ['JEFE_OPERACIONES', 'PREVENCION_RIESGOS', 'SUPERVISOR'];
+  }
+
+  return ['SUPERVISOR', 'JEFE_OPERACIONES', 'PREVENCION_RIESGOS'];
+};
+
+const defaultRoleByCase = (
+  procedureCase: ProcedureCase,
+  nextStatus: ProcedureStatus | null,
+): 'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS' => {
+  return suggestedRolesByCase(procedureCase, nextStatus)[0] ?? 'SUPERVISOR';
+};
+
+const templatesByActionAndStatus = (
+  action: ProcedureCase['requiredAction'],
+  currentStatus: ProcedureStatus,
+  nextStatus: ProcedureStatus | null,
+): string[] => {
+  if (nextStatus === 'UNDER_REVIEW') {
+    return [
+      'Se valida evidencia GPS y se abre revision formal del caso.',
+      'Se verifica contexto operacional y se inicia analisis preventivo con Supervision.',
+    ];
+  }
+
+  if (nextStatus === 'ASSIGNED') {
+    return [
+      'Se asigna responsable de gestion y se define plazo interno de ejecucion.',
+      'Se deriva el caso a responsable operativo para completar antecedentes y propuesta.',
+    ];
+  }
+
+  if (nextStatus === 'ACTION_PROPOSED') {
+    switch (action) {
+      case 'DIFFUSION_AND_REINFORCEMENT':
+        return [
+          'Se propone difusion preventiva y refuerzo del estandar de velocidad con el conductor.',
+          'Se propone coaching breve y seguimiento en terreno para consolidar conduccion segura.',
+        ];
+      case 'FORMAL_WARNING_AND_OAL':
+        return [
+          'Se propone llamado formal y capacitacion OAL obligatoria con registro de asistencia.',
+          'Se propone advertencia documentada y plan de mejora con control semanal.',
+        ];
+      case 'WRITTEN_REPRIMAND':
+        return [
+          'Se propone carta de amonestacion escrita por reincidencia en excesos moderados.',
+          'Se propone medida disciplinaria escrita y seguimiento estricto por Supervision.',
+        ];
+      case 'OPERATIONAL_CONTINUITY_REVIEW':
+        return [
+          'Se propone evaluacion de continuidad operativa por criticidad y riesgo contractual.',
+          'Se propone revision extraordinaria con Prevencion para definir permanencia operativa.',
+        ];
+      default:
+        return ['Se propone actuacion correctiva segun procedimiento vigente.'];
+    }
+  }
+
+  if (nextStatus === 'APPROVED') {
+    return [
+      'Se aprueba formalmente la actuacion propuesta y se autoriza su ejecucion.',
+      'Aprobacion registrada por jefatura para avanzar a implementacion inmediata.',
+    ];
+  }
+
+  if (nextStatus === 'EXECUTED') {
+    return [
+      'Actuacion ejecutada con respaldo documental y comunicacion al conductor.',
+      'Se completa ejecucion de medidas y se deja evidencia en bitacora.',
+    ];
+  }
+
+  if (currentStatus === 'EXECUTED') {
+    return [
+      'Caso cerrado con verificacion de cumplimiento y trazabilidad completa.',
+      'Se cierra expediente al cumplir actuacion, aprobacion y evidencia final.',
+    ];
+  }
+
+  return ['Se registra avance operacional del caso segun procedimiento.'];
+};
+
   const FLOW_STEPS: ProcedureStatus[] = [
     'DETECTED', 'UNDER_REVIEW', 'ASSIGNED', 'ACTION_PROPOSED', 'APPROVED', 'EXECUTED', 'CLOSED',
   ];
@@ -80,13 +178,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
   const [assigneeRole, setAssigneeRole] = useState<'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS'>('SUPERVISOR');
   const [noteTemplate, setNoteTemplate] = useState('');
   const [caseLog, setCaseLog] = useState<ProcedureEventLog[]>([]);
-
-  const noteTemplates = [
-    'Se informa al conductor y se refuerza compromiso de cumplimiento.',
-    'Se aplica llamado formal y se agenda capacitacion OAL obligatoria.',
-    'Se emite carta de amonestacion por incumplimiento contractual.',
-    'Se deriva a evaluacion de continuidad operativa por nivel critico.',
-  ];
+  const [logLoading, setLogLoading] = useState(false);
 
   const [referenceNow] = useState(() => Date.now());
 
@@ -109,14 +201,32 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     return filteredCases.find((entry) => entry.id === selectedCaseId) ?? filteredCases[0] ?? null;
   }, [filteredCases, selectedCaseId]);
 
+  const selectedNextStatus = selectedCase ? nextStatusForAction(selectedCase.status) : null;
+
+  const availableRoles = useMemo(() => {
+    if (!selectedCase) {
+      return ['SUPERVISOR', 'JEFE_OPERACIONES', 'PREVENCION_RIESGOS'] as const;
+    }
+    return suggestedRolesByCase(selectedCase, selectedNextStatus);
+  }, [selectedCase, selectedNextStatus]);
+
+  const noteTemplates = useMemo(() => {
+    if (!selectedCase) return [];
+    return templatesByActionAndStatus(selectedCase.requiredAction, selectedCase.status, selectedNextStatus);
+  }, [selectedCase, selectedNextStatus]);
+
   const visibleCaseLog = selectedCase ? caseLog : [];
 
   useEffect(() => {
     if (!selectedCase) {
+      setCaseLog([]);
+      setLogLoading(false);
       return;
     }
 
     let active = true;
+    setCaseLog([]);
+    setLogLoading(true);
     // Small delay ensures IndexedDB write from a status update has landed
     const timer = setTimeout(async () => {
       try {
@@ -124,6 +234,8 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         if (active) setCaseLog(logs);
       } catch {
         // Log display is non-critical; stay silent on failure
+      } finally {
+        if (active) setLogLoading(false);
       }
     }, 120);
 
@@ -133,7 +245,12 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     };
   }, [selectedCase]);
 
-  const selectedNextStatus = selectedCase ? nextStatusForAction(selectedCase.status) : null;
+  useEffect(() => {
+    if (!selectedCase) return;
+    setAssigneeRole(defaultRoleByCase(selectedCase, selectedNextStatus));
+    setNote('');
+    setNoteTemplate('');
+  }, [selectedCase?.id, selectedCase?.status, selectedNextStatus]);
 
   const pendingCount = cases.filter((entry) => entry.status !== 'CLOSED').length;
   const overdueCount = cases.filter((entry) => Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED').length;
@@ -173,6 +290,9 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         </div>
         <p style={{ color: '#cbd5e1', fontSize: '0.78rem', margin: '0 0 0.8rem 0' }}>
           Cada fila representa una actuacion obligatoria derivada del nivel del conductor. Selecciona un caso para revisar evidencia y registrar avance.
+        </p>
+        <p style={{ color: '#94a3b8', fontSize: '0.73rem', margin: '0 0 0.85rem 0' }}>
+          Regla vigente: un caso por vehiculo por archivo de jornada. Si el mismo vehiculo aparece en otro archivo, se genera un caso independiente por fecha.
         </p>
 
         <div
@@ -322,9 +442,9 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                   onChange={(e) => setAssigneeRole(e.target.value as 'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS')}
                   style={{ width: '100%', marginTop: '0.25rem', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '0.5rem', padding: '0.45rem' }}
                 >
-                  <option value="SUPERVISOR">Supervisor</option>
-                  <option value="JEFE_OPERACIONES">Jefe de Operaciones</option>
-                  <option value="PREVENCION_RIESGOS">Prevencion de Riesgos</option>
+                  {availableRoles.map((role) => (
+                    <option key={role} value={role}>{ROLE_LABEL[role]}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -459,6 +579,12 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                 <p style={{ color: '#bbf7d0', fontSize: '0.72rem', margin: 0 }}>
                   4. Designación de embajadores o conductores tutores de seguridad.
                 </p>
+              </div>
+            )}
+
+            {logLoading && (
+              <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                Cargando bitácora de actuaciones...
               </div>
             )}
 

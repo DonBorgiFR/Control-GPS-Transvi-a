@@ -593,6 +593,52 @@ Permitir filtrar toda la vista por grupo de servicio (VehicleGroup del CSV) y ap
 
 4. **Branding corporativo Transviña**.
 - Paleta reemplazada: púrpura `#c084fc` / `#1e1b4b` → dorado corporativo `#F5B800` y azul marino `#1B3D8C`.
+
+---
+
+## Iteracion 17 - Cabecera Operativa y Flujo de Procedimiento Dinamico
+
+### Objetivo
+Corregir los dos ultimos puntos de usabilidad de entrega: (1) cabecera superior sobrecargada y (2) consistencia operativa del flujo de procedimiento y bitacora.
+
+### Cambios Implementados
+
+1. **Cabecera superior optimizada y responsive** (`src/App.tsx`).
+- Se separa la cabecera en 2 niveles para evitar saturacion en una sola linea.
+- Nivel 1: identidad (logo, titulo, subtitulo) + acciones (`Agregar CSV`, `Exportar PDF Flota`, `Resetear Datos`).
+- Nivel 2: controles de contexto (`Archivo`, `Servicio`).
+- Se elimina el cuello de botella visual en desktop y se mejora lectura en anchos medianos con `flexWrap`.
+
+2. **Carga incremental de CSV sin reset obligatorio** (`src/App.tsx`).
+- Se agrega input oculto con `useRef` y boton `Agregar CSV` siempre visible cuando existe data cargada.
+- Permite cargar nueva data en cualquier momento, reutilizando el pipeline existente `handleDataLoaded`.
+- Se mantiene merge por nombre de archivo (sin duplicados por `filename`).
+
+3. **Responsable sugerido y plantillas de nota dinamicos** (`src/components/ProcedureBoard.tsx`).
+- Reglas de `Responsable sugerido` ahora dependen de severidad, nivel y siguiente estado.
+- Plantillas de nota ahora dependen de `requiredAction` + transicion de estado (`nextStatus`).
+- Al cambiar de caso, se recalcula contexto y se resetean nota/plantilla para evitar arrastre entre casos.
+
+4. **Bitacora robusta por caso seleccionado** (`src/components/ProcedureBoard.tsx`).
+- Se incorpora `logLoading` y limpieza inmediata de `caseLog` al cambiar caso.
+- Se evita mostrar bitacora del caso anterior mientras se consulta IndexedDB.
+- Nuevo mensaje de estado: `Cargando bitácora de actuaciones...`.
+
+5. **Regla de multi-caso establecida en UI** (`src/components/ProcedureBoard.tsx`).
+- Se explicita la regla de negocio vigente:
+  - un caso por vehiculo por archivo de jornada
+  - mismo vehiculo en otro archivo => caso independiente por fecha
+
+### Verificacion Final de Sesion
+- `npm run test -- --run` -> **43 tests OK**.
+- `npm run build` -> **OK, built in 2.82s**, sin errores.
+
+### Estado
+- [x] Cabecera operativa desacoplada y legible.
+- [x] Carga incremental de nuevos CSV sin reset.
+- [x] Flujo de procedimiento con sugerencias dinamicas por contexto.
+- [x] Bitacora sin arrastre visual entre casos.
+- [x] Regla de multi-caso por vehiculo definida y visible.
 - Fondo de aplicación: gradiente `#0a1e3d → #061525` (navy puro).
 - Encabezado: logo tipográfico **TRANS** (blanco) **VIÑA** (dorado) + icono azul marino.
 - Afecta: `index.css`, `App.tsx`, `StatCard.tsx`, `FileUploader.tsx`, `VehicleTable.tsx`, `HistoryView.tsx`, `ProcedureBoard.tsx`, `VehicleProfile.tsx`.

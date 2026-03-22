@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { FileUploader } from './components/FileUploader';
 import { StatCard } from './components/StatCard';
 import type { FleetSummary, ProcessedFileResult } from './types';
@@ -35,6 +35,7 @@ const SectionFallback: React.FC<{ label: string }> = ({ label }) => (
 );
 
 function App() {
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [viewMode, setViewMode] = useState<'TREND' | 'DETAIL' | 'PROCEDURE' | 'HISTORY'>('DETAIL');
   const [showQuickAccess, setShowQuickAccess] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFileResult[] | null>(null);
@@ -355,8 +356,22 @@ function App() {
       padding: '2rem'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <header style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+          <input
+            ref={uploadInputRef}
+            type="file"
+            multiple
+            accept=".csv"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (!e.target.files || e.target.files.length === 0) return;
+              void handleDataLoaded(e.target.files);
+              e.target.value = '';
+            }}
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ padding: '0.75rem', background: '#1B3D8C', borderRadius: '1rem', fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '3rem' }}>
               🚛
             </div>
@@ -367,20 +382,59 @@ function App() {
               <p style={{ color: '#94a3b8', marginTop: '0.25rem' }}>Monitoreo operacional de velocidad · Prevención de Riesgos</p>
             </div>
           </div>
-          
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+              {processedFiles && (
+                <button
+                  onClick={() => uploadInputRef.current?.click()}
+                  style={{ padding: '0.625rem 1rem', borderRadius: '0.75rem', background: 'rgba(245,184,0,0.18)', border: '1px solid rgba(245,184,0,0.55)', color: '#fef3c7', cursor: 'pointer' }}
+                >
+                  Agregar CSV
+                </button>
+              )}
+
+              {selectedFile && (
+                <button
+                  onClick={() => void handleExportFleetPDF()}
+                  style={{ padding: '0.625rem 1rem', borderRadius: '0.75rem', background: 'rgba(27,61,140,0.25)', border: '1px solid rgba(245,184,0,0.5)', color: '#fef3c7', cursor: 'pointer' }}
+                >
+                  Exportar PDF Flota
+                </button>
+              )}
+
+              {selectedFile && (
+                <button
+                  onClick={async () => {
+                    setProcessedFiles(null);
+                    setSelectedFileIndex(null);
+                    setSelectedVehicleGroup(null);
+                    setProcedureCasesByFile({});
+                    try {
+                      await clearProcessedFiles();
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'No fue posible limpiar el historico local.');
+                    }
+                  }}
+                  style={{ padding: '0.625rem 1rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1', cursor: 'pointer' }}
+                >
+                  Resetear Datos
+                </button>
+              )}
+            </div>
+          </div>
+
           {processedFiles && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <label style={{ color: '#94a3b8' }}>Archivo:</label>
-                <select 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <label style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Archivo:</label>
+                <select
                   value={selectedFileIndex ?? 0}
                   onChange={(e) => {
                     const index = parseInt(e.target.value);
                     setSelectedFileIndex(index);
-                    // Reset vehicle group filter when file changes
                     setSelectedVehicleGroup(null);
                   }}
-                  style={{ padding: '0.25rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                  style={{ minWidth: '240px', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                 >
                   {processedFiles.map((file, index) => (
                     <option key={index} value={index}>
@@ -391,12 +445,12 @@ function App() {
               </div>
 
               {selectedFile && (selectedFile.availableVehicleGroups?.length ?? 0) > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <label style={{ color: '#94a3b8' }}>Servicio:</label>
-                  <select 
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <label style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Servicio:</label>
+                  <select
                     value={selectedVehicleGroup || '*'}
                     onChange={(e) => setSelectedVehicleGroup(e.target.value === '*' ? null : e.target.value)}
-                    style={{ padding: '0.25rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(52,211,153,0.3)', background: 'rgba(16,185,129,0.1)', color: 'white' }}
+                    style={{ minWidth: '210px', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(52,211,153,0.3)', background: 'rgba(16,185,129,0.1)', color: 'white' }}
                   >
                     <option value="*">Todos los servicios</option>
                     {selectedFile.availableVehicleGroups.map((group) => (
@@ -406,34 +460,6 @@ function App() {
                 </div>
               )}
             </div>
-          )}
-          
-          {selectedFile && (
-            <button 
-              onClick={async () => {
-                setProcessedFiles(null);
-                setSelectedFileIndex(null);
-                setSelectedVehicleGroup(null);
-                setProcedureCasesByFile({});
-                try {
-                  await clearProcessedFiles();
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : 'No fue posible limpiar el historico local.');
-                }
-              }}
-              style={{ padding: '0.625rem 1.5rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1', cursor: 'pointer' }}
-            >
-              Resetear Datos
-            </button>
-          )}
-
-          {selectedFile && (
-            <button
-              onClick={() => void handleExportFleetPDF()}
-              style={{ padding: '0.625rem 1.5rem', borderRadius: '0.75rem', background: 'rgba(27,61,140,0.25)', border: '1px solid rgba(245,184,0,0.5)', color: '#fef3c7', cursor: 'pointer' }}
-            >
-              Exportar PDF Flota
-            </button>
           )}
         </header>
 
