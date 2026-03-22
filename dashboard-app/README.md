@@ -130,7 +130,7 @@ SLA: Nivel 4 = 6 h · Nivel 3 = 12 h · Niveles 1–2 = 24 h
 ## Pruebas
 
 ```bash
-npm run test           # 28 tests — debe dar 0 fallos
+npm run test           # 43 tests — debe dar 0 fallos
 npm run test:coverage  # Cobertura mínima: branches ≥ 65 %, functions ≥ 75 %
 ```
 
@@ -139,6 +139,7 @@ npm run test:coverage  # Cobertura mínima: branches ≥ 65 %, functions ≥ 75 
 - [x] Exportación PDF: reporte de flota + ficha de caso de procedimiento
 - [x] Persistencia IndexedDB entre recargas
 - [x] Flujo de procedimiento completo (7 estados + SLA + roles)
+- [x] Rectificacion de bitacora con trazabilidad (fe de erratas sin borrar historico)
 - [x] Reconocimiento de Nivel de Excelencia en todas las vistas
 - [x] Exportación CSV histórica de flota
 - [x] Build limpio, sin warnings, bundles de lógica propia < 12 kB

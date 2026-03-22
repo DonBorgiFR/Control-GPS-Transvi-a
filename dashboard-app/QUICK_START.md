@@ -157,6 +157,7 @@ El **stepper visual** en el panel de detalle de cada caso muestra el progreso en
 - **Asignar rol**: seleccionar el responsable del caso (Supervisor / Jefe de Operaciones / Prevención de Riesgos)
 - **Ver SLA**: fecha de vencimiento en rojo cuando el plazo ya venció
 - **Bitácora de actuaciones**: historial de todos los avances registrados en el caso (parte inferior del panel)
+- **Rectificación de bitácora**: si hubo error de redacción o dato, registrar fe de erratas sin borrar entradas previas
 - **Exportar ficha PDF**: botón en el detalle → genera `ficha-caso-PPU-FECHA.pdf`
 
 ### Indicador de Cultura Preventiva

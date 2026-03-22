@@ -225,6 +225,50 @@ export const persistProcedureCaseUpdate = async (params: {
   }
 };
 
+export const persistProcedureLogCorrection = async (params: {
+  fileName: string;
+  caseId: string;
+  currentStatus: ProcedureStatus;
+  notes: string;
+  performedByRole: ProcedureRole;
+}): Promise<void> => {
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction([FILES_STORE, LOGS_STORE], 'readwrite');
+    const filesStore = tx.objectStore(FILES_STORE);
+    const logsStore = tx.objectStore(LOGS_STORE);
+
+    const file = await runRequest(filesStore.get(params.fileName)) as StoredProcessedFile | undefined;
+    if (!file) {
+      throw new Error(`No existe registro historico para ${params.fileName}.`);
+    }
+
+    const caseExists = file.procedureCases.some((entry) => entry.id === params.caseId);
+    if (!caseExists) {
+      throw new Error(`No se encontro el caso ${params.caseId} en el historico local.`);
+    }
+
+    const correctionLog: StoredProcedureLog = {
+      caseId: params.caseId,
+      fileName: params.fileName,
+      timestamp: new Date().toISOString(),
+      previousStatus: params.currentStatus,
+      nextStatus: params.currentStatus,
+      performedByRole: params.performedByRole,
+      notes: params.notes,
+    };
+    logsStore.add(correctionLog);
+
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error('No se pudo registrar la rectificacion en bitacora.'));
+      tx.onabort = () => reject(tx.error ?? new Error('La rectificacion de bitacora fue cancelada.'));
+    });
+  } finally {
+    db.close();
+  }
+};
+
 export const getProcedureLogsByCase = async (caseId: string): Promise<ProcedureEventLog[]> => {
   const db = await openDatabase();
   try {

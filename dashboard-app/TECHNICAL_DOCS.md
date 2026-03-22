@@ -202,8 +202,13 @@ Tablero kanban de casos de procedimiento.
 Props:
 ```typescript
 cases: ProcedureCase[]
-onCaseUpdate: (updated: ProcedureCase) => void
-onExport: (procedureCase: ProcedureCase) => void
+onUpdateCaseStatus: (
+  caseId: string,
+  nextStatus: ProcedureStatus,
+  note: string,
+  performedByRole: ProcedureRole,
+) => void
+onExportCasePDF?: (procedureCase: ProcedureCase) => void
 excellenceCandidates?: Array<{ registration: string; vehicleName: string }>
 ```
 
@@ -307,9 +312,11 @@ Persistencia IndexedDB entre recargas del navegador.
 | `loadProcessedFiles()` | Carga desde IndexedDB |
 | `mergeProcessedFiles(existing, incoming)` | Fusiona sin duplicar por filename |
 | `clearProcessedFiles()` | Borra todo |
-| `persistProcedureCaseUpdate(filename, updatedCase)` | Escribe un caso actualizado |
+| `persistProcedureCaseUpdate({ fileName, caseId, nextStatus, notes, performedByRole })` | Actualiza estado del caso y agrega log de actuacion |
+| `persistProcedureLogCorrection({ fileName, caseId, currentStatus, notes, performedByRole })` | Registra rectificacion de bitacora sin cambiar estado |
+| `getProcedureLogsByCase(caseId)` | Obtiene bitacora cronologica del caso |
 
-Base de datos: `TransvinaDashboard`, store: `processedFiles`.
+Base de datos: `transvina-gps-history`, stores: `processedFiles` y `procedureLogs`.
 
 ---
 
@@ -457,9 +464,10 @@ Según PD-8-12FC-01: `retentionYears: 2`. Los casos PDF deben archivarse por 2 a
 
 La aplicación usa IndexedDB (nativo del navegador) para conservar datos entre recargas.
 
-- **Base de datos:** `TransvinaDashboard` (versión 1)
-- **Store:** `processedFiles`
-- **Clave:** `filename` (nombre del archivo CSV)
+- **Base de datos:** `transvina-gps-history` (versión 1)
+- **Stores:**
+  - `processedFiles` (clave `filename`)
+  - `procedureLogs` (clave autoincremental `id`, índices `caseId` y `fileName`)
 
 Los datos se cargan automáticamente al iniciar la app (`useEffect` en App.tsx). Si el store está vacío, el usuario ve la pantalla de carga.
 
@@ -498,7 +506,7 @@ Genera un CSV con BOM UTF-8 (compatible con Excel español). Una fila por archiv
 ### Ejecutar
 
 ```bash
-npm run test           # 28 tests, debe dar 0 fallos
+npm run test           # 43 tests, debe dar 0 fallos
 npm run test:coverage  # genera reporte en coverage/
 ```
 
@@ -515,9 +523,9 @@ npm run test:coverage  # genera reporte en coverage/
 
 | Archivo | Tests | Cubre |
 |---------|-------|-------|
-| `dataProcessor.test.ts` | 20 | Pipeline completo, clasificación niveles, errores CSV, historial |
+| `dataProcessor.test.ts` | 27 | Pipeline completo, clasificación niveles, errores CSV, historial |
 | `StatCard.test.tsx` | 1 | Render de props |
-| `VehicleTable.test.tsx` | 7 | Paginación, filtros, ordenamiento, callbacks, estado en español |
+| `VehicleTable.test.tsx` | 15 | Paginación, filtros, ordenamiento, callbacks, estado en español |
 
 ### Para agregar tests
 

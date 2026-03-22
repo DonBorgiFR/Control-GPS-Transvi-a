@@ -136,6 +136,39 @@ Iniciar la transicion desde analitica hacia ejecucion del protocolo de gestion: 
 - `npm run test` -> 13 tests OK.
 - `npm run build` -> OK.
 
+## Iteracion 18 - Rectificacion Segura de Bitacora de Actuaciones
+
+### Objetivo
+Permitir correcciones de errores en bitacora sin perder trazabilidad ni alterar el flujo formal de estados del procedimiento.
+
+### Cambios Implementados
+
+1. Registro de rectificaciones en IndexedDB.
+- Archivo: `src/utils/historyStorage.ts`.
+- Nueva funcion `persistProcedureLogCorrection` para agregar una entrada de bitacora con:
+  - mismo estado anterior/siguiente (`previousStatus = nextStatus = estado actual`),
+  - rol responsable,
+  - nota de rectificacion,
+  - timestamp de auditoria.
+- Se valida existencia de archivo y caso antes de persistir.
+
+2. UI para corregir errores en bitacora.
+- Archivo: `src/components/ProcedureBoard.tsx`.
+- Se agrega bloque "Rectificacion de bitacora" en el detalle del caso con:
+  - textarea para fe de erratas,
+  - validacion de nota obligatoria,
+  - manejo de error de guardado,
+  - boton `Registrar rectificacion` con estado de carga.
+- Tras guardar, se recarga la bitacora del caso para reflejar la rectificacion inmediatamente.
+
+### Criterio Operacional Aplicado
+- No se editan ni eliminan entradas historicas previas.
+- Las correcciones se registran como nuevos eventos trazables para auditoria de Prevencion de Riesgos.
+
+### Verificacion Final de Sesion
+- `npm run test -- --run` -> **43 tests OK**.
+- `npm run build` -> **OK, built in 3.29s**, sin warnings.
+
 ## Iteracion 7 - Cierre de Cobertura y RouteMap
 
 ### Objetivo

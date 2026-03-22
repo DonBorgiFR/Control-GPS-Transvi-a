@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { ProcedureCase, ProcedureEventLog, ProcedureRole, ProcedureStatus } from '../types/procedures';
-import { getProcedureLogsByCase } from '../utils/historyStorage';
+import { getProcedureLogsByCase, persistProcedureLogCorrection } from '../utils/historyStorage';
 
 interface ProcedureBoardProps {
   cases: ProcedureCase[];
@@ -66,15 +66,19 @@ const templatesByActionAndStatus = (
 ): string[] => {
   if (nextStatus === 'UNDER_REVIEW') {
     return [
-      'Se valida evidencia GPS y se abre revision formal del caso.',
-      'Se verifica contexto operacional y se inicia analisis preventivo con Supervision.',
+      'Revision prioritaria: se valida evidencia GPS, contrato aplicable y trazabilidad completa del caso.',
+      'Revision estandar: se verifican eventos, contexto operacional y antecedentes del conductor.',
+      'Revision preventiva: se confirma desviacion y se acuerda plan de refuerzo con Supervision.',
+      'Revision formativa: se analiza oportunidad de mejora y se agenda retroalimentacion sin sancion inicial.',
     ];
   }
 
   if (nextStatus === 'ASSIGNED') {
     return [
-      'Se asigna responsable de gestion y se define plazo interno de ejecucion.',
-      'Se deriva el caso a responsable operativo para completar antecedentes y propuesta.',
+      'Asignacion critica: se designa responsable senior con plazo corto por riesgo operativo alto.',
+      'Asignacion formal: responsable definido con plan, fecha de control y evidencia requerida.',
+      'Asignacion preventiva: responsable de terreno para coaching y seguimiento semanal.',
+      'Asignacion formativa: supervisor acompanara al conductor en observacion y retroalimentacion.',
     ];
   }
 
@@ -82,26 +86,37 @@ const templatesByActionAndStatus = (
     switch (action) {
       case 'DIFFUSION_AND_REINFORCEMENT':
         return [
-          'Se propone difusion preventiva y refuerzo del estandar de velocidad con el conductor.',
-          'Se propone coaching breve y seguimiento en terreno para consolidar conduccion segura.',
+          'Escenario alto: refuerzo formal con acta y seguimiento obligatorio por 30 dias.',
+          'Escenario medio: charla estructurada de seguridad y control de cumplimiento semanal.',
+          'Escenario bajo: coaching individual en ruta y compromiso de mejora firmado.',
+          'Escenario positivo: reconocimiento de mejora reciente y refuerzo de buenas practicas.',
         ];
       case 'FORMAL_WARNING_AND_OAL':
         return [
-          'Se propone llamado formal y capacitacion OAL obligatoria con registro de asistencia.',
-          'Se propone advertencia documentada y plan de mejora con control semanal.',
+          'Escenario alto: llamado formal + OAL obligatoria inmediata + seguimiento quincenal.',
+          'Escenario medio: advertencia documentada + OAL en la semana + plan de mejora.',
+          'Escenario bajo: OAL preventiva sin sancion adicional, con monitoreo intensivo de cumplimiento.',
+          'Escenario de recuperacion: OAL + mentor operativo para corregir conducta de riesgo.',
         ];
       case 'WRITTEN_REPRIMAND':
         return [
-          'Se propone carta de amonestacion escrita por reincidencia en excesos moderados.',
-          'Se propone medida disciplinaria escrita y seguimiento estricto por Supervision.',
+          'Escenario alto: carta de amonestacion escrita por reincidencia y riesgo contractual.',
+          'Escenario medio: carta escrita con compromiso de correccion y controles semanales.',
+          'Escenario bajo: reemplazo de sancion por ultimo aviso formal + capacitacion reforzada.',
+          'Escenario de contencion: medida correctiva proporcional, priorizando recuperacion conductual.',
         ];
       case 'OPERATIONAL_CONTINUITY_REVIEW':
         return [
-          'Se propone evaluacion de continuidad operativa por criticidad y riesgo contractual.',
-          'Se propone revision extraordinaria con Prevencion para definir permanencia operativa.',
+          'Escenario alto: evaluacion inmediata de continuidad operativa por riesgo grave sostenido.',
+          'Escenario medio: comite de evaluacion con Prevencion y Operaciones en 24 horas.',
+          'Escenario bajo: continuidad condicionada a plan estricto de control y acompanamiento.',
+          'Escenario de reconduccion: permanencia supervisada con metas de seguridad medibles.',
         ];
       default:
-        return ['Se propone actuacion correctiva segun procedimiento vigente.'];
+        return [
+          'Se propone actuacion correctiva segun procedimiento vigente.',
+          'Se propone actuacion preventiva proporcional al nivel de riesgo detectado.',
+        ];
     }
   }
 
@@ -114,19 +129,26 @@ const templatesByActionAndStatus = (
 
   if (nextStatus === 'EXECUTED') {
     return [
-      'Actuacion ejecutada con respaldo documental y comunicacion al conductor.',
-      'Se completa ejecucion de medidas y se deja evidencia en bitacora.',
+      'Ejecucion completa: medida aplicada con evidencia documental y comunicacion formal al conductor.',
+      'Ejecucion controlada: medida aplicada, seguimiento definido y responsable asignado.',
+      'Ejecucion preventiva: accion aplicada con foco en mejora de conducta y monitoreo continuo.',
+      'Ejecucion positiva: se registra mejora observable y plan de sostenimiento de buenas practicas.',
     ];
   }
 
   if (currentStatus === 'EXECUTED') {
     return [
-      'Caso cerrado con verificacion de cumplimiento y trazabilidad completa.',
-      'Se cierra expediente al cumplir actuacion, aprobacion y evidencia final.',
+      'Cierre formal: cumplimiento verificado, evidencia completa y trazabilidad auditada.',
+      'Cierre operativo: expediente completo con control post-cierre programado.',
+      'Cierre preventivo: caso cerrado con mejora sostenida y seguimiento de rutina.',
+      'Cierre con reconocimiento: se destaca recuperacion conductual y cumplimiento consistente.',
     ];
   }
 
-  return ['Se registra avance operacional del caso segun procedimiento.'];
+  return [
+    'Se registra avance operacional del caso segun procedimiento.',
+    'Se registra avance preventivo orientado a reducir recurrencia.',
+  ];
 };
 
   const FLOW_STEPS: ProcedureStatus[] = [
@@ -179,6 +201,9 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
   const [noteTemplate, setNoteTemplate] = useState('');
   const [caseLog, setCaseLog] = useState<ProcedureEventLog[]>([]);
   const [logLoading, setLogLoading] = useState(false);
+  const [correctionNote, setCorrectionNote] = useState('');
+  const [correctionSaving, setCorrectionSaving] = useState(false);
+  const [correctionError, setCorrectionError] = useState('');
 
   const [referenceNow] = useState(() => Date.now());
 
@@ -217,6 +242,11 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
 
   const visibleCaseLog = selectedCase ? caseLog : [];
 
+  const loadCaseLog = async (caseId: string) => {
+    const logs = await getProcedureLogsByCase(caseId);
+    setCaseLog(logs);
+  };
+
   useEffect(() => {
     if (!selectedCase) {
       setCaseLog([]);
@@ -231,7 +261,9 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     const timer = setTimeout(async () => {
       try {
         const logs = await getProcedureLogsByCase(selectedCase.id);
-        if (active) setCaseLog(logs);
+        if (active) {
+          setCaseLog(logs);
+        }
       } catch {
         // Log display is non-critical; stay silent on failure
       } finally {
@@ -250,6 +282,8 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     setAssigneeRole(defaultRoleByCase(selectedCase, selectedNextStatus));
     setNote('');
     setNoteTemplate('');
+    setCorrectionNote('');
+    setCorrectionError('');
   }, [selectedCase?.id, selectedCase?.status, selectedNextStatus]);
 
   const pendingCount = cases.filter((entry) => entry.status !== 'CLOSED').length;
@@ -554,8 +588,90 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
               </div>
             )}
             <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
-              Sugerencia operacional: usar plantillas de nota para mantener consistencia documental y facilitar auditoria.
+              Sugerencia operacional: usar plantillas para mantener consistencia documental. El enfoque no siempre es penalizar; debe ser proporcional al riesgo y privilegiar prevencion cuando sea viable.
             </div>
+
+            <div
+              style={{
+                borderTop: '1px solid rgba(255,255,255,0.07)',
+                paddingTop: '0.75rem',
+                marginTop: '0.1rem',
+              }}
+            >
+              <p style={{ color: '#fcd34d', fontSize: '0.74rem', margin: '0 0 0.35rem' }}>
+                Rectificacion de bitacora (cuando hubo error de redaccion o dato)
+              </p>
+              <p style={{ color: '#94a3b8', fontSize: '0.72rem', margin: '0 0 0.45rem' }}>
+                No elimina registros previos. Agrega una fe de erratas trazable con fecha y responsable.
+              </p>
+              <textarea
+                value={correctionNote}
+                onChange={(e) => {
+                  setCorrectionNote(e.target.value);
+                  if (correctionError) {
+                    setCorrectionError('');
+                  }
+                }}
+                placeholder="Ejemplo: Se corrige referencia de evento GPS; el dato correcto corresponde a 13:42 en Ruta 5."
+                style={{
+                  width: '100%',
+                  minHeight: '70px',
+                  borderRadius: '0.6rem',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: 'white',
+                  padding: '0.6rem',
+                  resize: 'vertical',
+                }}
+              />
+              {correctionError && (
+                <div style={{ color: '#fca5a5', fontSize: '0.72rem', marginTop: '0.35rem' }}>
+                  {correctionError}
+                </div>
+              )}
+              <div style={{ marginTop: '0.45rem' }}>
+                <button
+                  onClick={async () => {
+                    const trimmed = correctionNote.trim();
+                    if (!trimmed) {
+                      setCorrectionError('Debes escribir la rectificacion antes de registrar.');
+                      return;
+                    }
+
+                    try {
+                      setCorrectionSaving(true);
+                      setCorrectionError('');
+                      await persistProcedureLogCorrection({
+                        fileName: selectedCase.fileName,
+                        caseId: selectedCase.id,
+                        currentStatus: selectedCase.status,
+                        notes: `Rectificacion: ${trimmed}`,
+                        performedByRole: assigneeRole,
+                      });
+                      await loadCaseLog(selectedCase.id);
+                      setCorrectionNote('');
+                    } catch {
+                      setCorrectionError('No se pudo registrar la rectificacion. Intenta nuevamente.');
+                    } finally {
+                      setCorrectionSaving(false);
+                    }
+                  }}
+                  disabled={correctionSaving}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(245,184,0,0.18)',
+                    color: '#fef3c7',
+                    cursor: correctionSaving ? 'not-allowed' : 'pointer',
+                    opacity: correctionSaving ? 0.65 : 1,
+                  }}
+                >
+                  {correctionSaving ? 'Registrando...' : 'Registrar rectificacion'}
+                </button>
+              </div>
+            </div>
+
             {excellenceCandidates.length > 0 && (
               <div
                 style={{
