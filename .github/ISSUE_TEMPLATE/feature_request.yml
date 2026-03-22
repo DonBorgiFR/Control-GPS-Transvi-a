@@ -1,0 +1,48 @@
+name: Feature request
+description: Proponer una mejora funcional o tecnica
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema u oportunidad
+      description: Que necesidad de negocio o operacion quieres resolver
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solucion propuesta
+      description: Describe la mejora y su comportamiento esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptacion
+      description: Define como sabremos que la mejora esta completa
+      placeholder: |
+        - Dado X, cuando Y, entonces Z
+        - Debe mantener compatibilidad con CSV actual
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad
+      options:
+        - Alta
+        - Media
+        - Baja
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto esperado
+      description: Operativo, seguridad, cumplimiento, experiencia usuario, etc.

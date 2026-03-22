@@ -1,6 +1,6 @@
 # Dashboard GPS Transviña — Prevención de Riesgos
 
-Aplicación web client-side para el monitoreo y gestión de condutas de conducción de la flota Transviña, alineada al **Procedimiento de Velocidades 2026 (PD-8-12FC-01)**. Corre completamente en el navegador: sin servidor, sin base de datos remota, sin autenticación.
+Aplicación web client-side para el monitoreo y gestión de conductas de conducción de la flota Transviña, alineada al **Procedimiento de Velocidades 2026 (PD-8-12FC-01)**. Corre completamente en el navegador: sin servidor, sin base de datos remota, sin autenticación.
 
 ## Inicio rápido (un clic)
 

@@ -1,0 +1,55 @@
+name: Bug report
+description: Reportar un problema funcional o tecnico
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumen del problema
+      description: Describe que ocurre y por que es un problema
+      placeholder: Al cargar un CSV con formato valido, la app no genera eventos...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: Lista numerada, clara y breve
+      placeholder: |
+        1. Abrir dashboard
+        2. Cargar archivo Actividad Diaria...
+        3. Ir a vista Procedimiento
+        4. Observar error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Resultado actual
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Entorno
+      description: SO, navegador y version de Node si aplica
+      placeholder: Windows 11, Chrome 134, Node 20
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia adicional
+      description: Logs, screenshots, CSV de ejemplo o contexto relevante
