@@ -2,6 +2,14 @@
 
 Todas las mejoras relevantes de este proyecto se documentan en este archivo.
 
+## v1.0.3 - 2026-03-23
+
+### Added
+- Tabla Historial de Jornadas con ordenamiento interactivo por fecha, archivo, activos, distancia, velocidad máxima, eventos, N3-4 y casos abiertos.
+
+### Quality
+- Pruebas nuevas para validar el ordenamiento de la tabla Detalle por Jornada.
+
 ## v1.0.2 - 2026-03-23
 
 ### Added

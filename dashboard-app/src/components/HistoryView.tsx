@@ -5,6 +5,7 @@ import { exportFleetSummaryCSV } from '../utils/exportUtils';
 import { TrendChart } from './TrendChart';
 
 type TimeRange = 'ALL' | '90' | '30' | '7';
+type HistorySortKey = 'date' | 'filename' | 'activeVehicles' | 'totalDistance' | 'maxSpeedFleet' | 'totalEvents' | 'criticalVehicles' | 'openCases';
 
 interface HistoryViewProps {
   files: ProcessedFileResult[];
@@ -27,8 +28,59 @@ const panelStyle: React.CSSProperties = {
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ files, selectedVehicleGroup }) => {
   const [range, setRange] = useState<TimeRange>('ALL');
+  const [sortKey, setSortKey] = useState<HistorySortKey>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const filtered = useMemo(() => filterByRange(files, range), [files, range]);
+
+  const sorted = useMemo(() => {
+    const entries = [...filtered];
+
+    entries.sort((left, right) => {
+      let comparison = 0;
+      const leftCriticalVehicles = (left.summary.byLevel[3] ?? 0) + (left.summary.byLevel[4] ?? 0);
+      const rightCriticalVehicles = (right.summary.byLevel[3] ?? 0) + (right.summary.byLevel[4] ?? 0);
+      const leftOpenCases = left.procedureCases.filter((c) => c.status !== 'CLOSED').length;
+      const rightOpenCases = right.procedureCases.filter((c) => c.status !== 'CLOSED').length;
+
+      switch (sortKey) {
+        case 'date':
+          comparison = (left.date?.getTime() ?? 0) - (right.date?.getTime() ?? 0);
+          break;
+        case 'filename':
+          comparison = left.filename.localeCompare(right.filename, 'es', { numeric: true, sensitivity: 'base' });
+          break;
+        case 'activeVehicles':
+          comparison = left.summary.activeVehicles - right.summary.activeVehicles;
+          break;
+        case 'totalDistance':
+          comparison = left.summary.totalDistance - right.summary.totalDistance;
+          break;
+        case 'maxSpeedFleet':
+          comparison = left.summary.maxSpeedFleet - right.summary.maxSpeedFleet;
+          break;
+        case 'totalEvents':
+          comparison = left.summary.totalEvents - right.summary.totalEvents;
+          break;
+        case 'criticalVehicles':
+          comparison = leftCriticalVehicles - rightCriticalVehicles;
+          break;
+        case 'openCases':
+          comparison = leftOpenCases - rightOpenCases;
+          break;
+        default:
+          comparison = 0;
+      }
+
+      if (comparison === 0) {
+        comparison = (left.date?.getTime() ?? 0) - (right.date?.getTime() ?? 0);
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return entries;
+  }, [filtered, sortDirection, sortKey]);
 
   // Trend chart needs chronological order (oldest first)
   const trendData = useMemo(
@@ -59,6 +111,34 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ files, selectedVehicle
     '30': 'Últimos 30d',
     '7': 'Últimos 7d',
   };
+
+  const toggleSort = (nextKey: HistorySortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDirection(nextKey === 'filename' ? 'asc' : 'desc');
+  };
+
+  const renderSortLabel = (label: string, key: HistorySortKey) => {
+    if (sortKey !== key) {
+      return `${label} ↕`;
+    }
+
+    return `${label} ${sortDirection === 'asc' ? '↑' : '↓'}`;
+  };
+
+  const sortButtonStyle = (key: HistorySortKey): React.CSSProperties => ({
+    background: 'transparent',
+    border: 'none',
+    padding: 0,
+    color: sortKey === key ? '#F5B800' : '#cbd5e1',
+    font: 'inherit',
+    fontWeight: 700,
+    cursor: 'pointer',
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -182,25 +262,64 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ files, selectedVehicle
             >
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                  {['Fecha', 'Archivo', 'Activos', 'Distancia', 'V.Max', 'Eventos', 'N3-4', 'Casos'].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        style={{
-                          textAlign: 'left',
-                          padding: '0.5rem 0.75rem',
-                          color: '#cbd5e1',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                    <th
+                      style={{
+                        textAlign: 'left',
+                        padding: '0.5rem 0.75rem',
+                        color: sortKey === 'date' ? '#F5B800' : '#cbd5e1',
+                        fontWeight: 700,
+                      }}
+                    >
+                      <button type="button" onClick={() => toggleSort('date')} style={sortButtonStyle('date')}>
+                        {renderSortLabel('Fecha', 'date')}
+                      </button>
+                    </th>
+                    <th
+                      style={{
+                        textAlign: 'left',
+                        padding: '0.5rem 0.75rem',
+                        color: sortKey === 'filename' ? '#F5B800' : '#cbd5e1',
+                        fontWeight: 700,
+                      }}
+                    >
+                      <button type="button" onClick={() => toggleSort('filename')} style={sortButtonStyle('filename')}>
+                        {renderSortLabel('Archivo', 'filename')}
+                      </button>
+                    </th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: sortKey === 'activeVehicles' ? '#F5B800' : '#cbd5e1', fontWeight: 700 }}>
+                      <button type="button" onClick={() => toggleSort('activeVehicles')} style={sortButtonStyle('activeVehicles')}>
+                        {renderSortLabel('Activos', 'activeVehicles')}
+                      </button>
+                    </th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: sortKey === 'totalDistance' ? '#F5B800' : '#cbd5e1', fontWeight: 700 }}>
+                      <button type="button" onClick={() => toggleSort('totalDistance')} style={sortButtonStyle('totalDistance')}>
+                        {renderSortLabel('Distancia', 'totalDistance')}
+                      </button>
+                    </th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: sortKey === 'maxSpeedFleet' ? '#F5B800' : '#cbd5e1', fontWeight: 700 }}>
+                      <button type="button" onClick={() => toggleSort('maxSpeedFleet')} style={sortButtonStyle('maxSpeedFleet')}>
+                        {renderSortLabel('V.Max', 'maxSpeedFleet')}
+                      </button>
+                    </th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: sortKey === 'totalEvents' ? '#F5B800' : '#cbd5e1', fontWeight: 700 }}>
+                      <button type="button" onClick={() => toggleSort('totalEvents')} style={sortButtonStyle('totalEvents')}>
+                        {renderSortLabel('Eventos', 'totalEvents')}
+                      </button>
+                    </th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: sortKey === 'criticalVehicles' ? '#F5B800' : '#cbd5e1', fontWeight: 700 }}>
+                      <button type="button" onClick={() => toggleSort('criticalVehicles')} style={sortButtonStyle('criticalVehicles')}>
+                        {renderSortLabel('N3-4', 'criticalVehicles')}
+                      </button>
+                    </th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', color: sortKey === 'openCases' ? '#F5B800' : '#cbd5e1', fontWeight: 700 }}>
+                      <button type="button" onClick={() => toggleSort('openCases')} style={sortButtonStyle('openCases')}>
+                        {renderSortLabel('Casos', 'openCases')}
+                      </button>
+                    </th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((entry) => {
+                  {sorted.map((entry) => {
                   const criticalVehicles =
                     (entry.summary.byLevel[3] ?? 0) + (entry.summary.byLevel[4] ?? 0);
                   const openCases = entry.procedureCases.filter(
