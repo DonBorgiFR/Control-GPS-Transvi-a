@@ -418,6 +418,39 @@ Sin el fix, ninguno de estos ~7400 registros generaba procedimientos.
 **`src/utils/dataProcessor.test.ts`**:
 - Se agregó test `'parses ActivityDate in DD/MM/YYYY format (formato real de CSV GPS)'` que valida que con el formato real de los archivos se generan eventos de velocidad y niveles correctos.
 
+## Iteracion 19 - Operacion Jefe Unico y Respaldo Portable
+
+### Objetivo
+Reducir dependencia de flujo multi-actor y asegurar continuidad del seguimiento de casos cuando solo el jefe de Prevencion usa la carpeta compartida.
+
+### Cambios Implementados
+
+1. Modo jefe unico en procedimiento.
+- Archivo: `src/components/ProcedureBoard.tsx`.
+- Nuevo prop `singleOperatorMode` (activo en App).
+- Responsable fijado en `PREVENCION_RIESGOS` para evitar friccion operacional.
+- Se habilita cierre directo de caso en modo jefe unico.
+- Mensaje visual de contexto operativo en cabecera de la cola.
+
+2. Respaldo y restauracion de estado en JSON.
+- Archivo: `src/utils/historyStorage.ts`.
+- Nueva exportacion `exportHistorySnapshot()` con archivos procesados + bitacora de actuaciones.
+- Nueva importacion `importHistorySnapshot(jsonContent)` con validacion de version y restauracion completa en IndexedDB.
+
+3. Integracion en interfaz principal.
+- Archivo: `src/App.tsx`.
+- Boton `Respaldar Estado (JSON)` para descarga portable.
+- Boton `Restaurar Estado` con selector de archivo `.json`.
+- Al restaurar: se recargan archivos, casos, seleccion y vista sin requerir recarga manual de la pagina.
+
+### Verificacion Final de Sesion
+- `npm run test` -> **45 tests OK**.
+- `npm run build` -> **OK, built in 2.89s**.
+
+### Criterio Operacional Cubierto
+- Continuidad de seguimiento aun si cambia el origen del navegador (`5173` vs `4173`) o se limpia el almacenamiento local.
+- Flujo simplificado para uso real por un unico operador de Prevencion de Riesgos.
+
 ### Analisis del Gap Logico de Nivel 1
 
 **Descripcion del gap detectado:**

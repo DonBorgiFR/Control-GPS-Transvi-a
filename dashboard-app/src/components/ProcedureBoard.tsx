@@ -5,6 +5,7 @@ import { getProcedureLogsByCase, persistProcedureLogCorrection } from '../utils/
 interface ProcedureBoardProps {
   cases: ProcedureCase[];
   excellenceCandidates?: Array<{ registration: string; vehicleName: string }>;
+  singleOperatorMode?: boolean;
   onUpdateCaseStatus: (
     caseId: string,
     nextStatus: ProcedureStatus,
@@ -211,6 +212,7 @@ const nextStatusForAction = (status: ProcedureStatus): ProcedureStatus | null =>
 export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
   cases,
   excellenceCandidates = [],
+  singleOperatorMode = true,
   onUpdateCaseStatus,
   onExportCasePDF,
 }) => {
@@ -359,12 +361,12 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
 
   useEffect(() => {
     if (!selectedCase) return;
-    setAssigneeRole(defaultRoleByCase(selectedCase, selectedNextStatus));
+    setAssigneeRole(singleOperatorMode ? 'PREVENCION_RIESGOS' : defaultRoleByCase(selectedCase, selectedNextStatus));
     setNote('');
     setNoteTemplate('');
     setCorrectionNote('');
     setCorrectionError('');
-  }, [selectedCase?.id, selectedCase?.status, selectedNextStatus]);
+  }, [selectedCase?.id, selectedCase?.status, selectedNextStatus, singleOperatorMode]);
 
   const pendingCount = cases.filter((entry) => entry.status !== 'CLOSED').length;
   const overdueCount = cases.filter((entry) => Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED').length;
@@ -436,6 +438,22 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         <p style={{ color: '#94a3b8', fontSize: '0.73rem', margin: '0 0 0.85rem 0' }}>
           Regla vigente: un caso por vehiculo por archivo de jornada. Si el mismo vehiculo aparece en otro archivo, se genera un caso independiente por fecha.
         </p>
+
+        {singleOperatorMode && (
+          <div
+            style={{
+              marginBottom: '0.85rem',
+              background: 'rgba(14,165,233,0.12)',
+              border: '1px solid rgba(56,189,248,0.35)',
+              borderRadius: '0.7rem',
+              padding: '0.55rem 0.7rem',
+              color: '#bae6fd',
+              fontSize: '0.74rem',
+            }}
+          >
+            Modo Jefe de Prevencion activo: responsable fijo en Prevencion de Riesgos, avance operativo directo y cierre manual cuando corresponda.
+          </div>
+        )}
 
         <div
           style={{
@@ -621,12 +639,18 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                 <select
                   value={assigneeRole}
                   onChange={(e) => setAssigneeRole(e.target.value as 'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS')}
+                  disabled={singleOperatorMode}
                   style={{ width: '100%', marginTop: '0.25rem', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '0.5rem', padding: '0.45rem' }}
                 >
                   {availableRoles.map((role) => (
                     <option key={role} value={role}>{ROLE_LABEL[role]}</option>
                   ))}
                 </select>
+                {singleOperatorMode && (
+                  <div style={{ color: '#7dd3fc', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                    Fijo en modo jefe unico.
+                  </div>
+                )}
               </div>
               <div>
                 <label style={{ color: '#cbd5e1', fontSize: '0.78rem' }}>Plantilla de nota</label>
@@ -701,13 +725,13 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                     cursor: 'pointer',
                   }}
                 >
-                  Avanzar a {STATUS_LABEL[selectedNextStatus]}
+                  {singleOperatorMode ? 'Registrar avance operativo' : `Avanzar a ${STATUS_LABEL[selectedNextStatus]}`}
                 </button>
               )}
 
               <button
                 onClick={() => {
-                  if (selectedCase.status !== 'EXECUTED') {
+                  if (!singleOperatorMode && selectedCase.status !== 'EXECUTED') {
                     return;
                   }
                   const finalNote = note.trim() || `Caso cerrado por ${assigneeRole} con evidencia ejecutada.`;
@@ -721,15 +745,15 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
                   border: '1px solid rgba(255,255,255,0.15)',
                   background: 'rgba(59,130,246,0.2)',
                   color: '#bfdbfe',
-                  cursor: selectedCase.status === 'EXECUTED' ? 'pointer' : 'not-allowed',
-                  opacity: selectedCase.status === 'EXECUTED' ? 1 : 0.5,
+                  cursor: singleOperatorMode || selectedCase.status === 'EXECUTED' ? 'pointer' : 'not-allowed',
+                  opacity: singleOperatorMode || selectedCase.status === 'EXECUTED' ? 1 : 0.5,
                 }}
               >
-                Cerrar caso
+                {singleOperatorMode ? 'Cerrar caso (jefe)' : 'Cerrar caso'}
               </button>
             </div>
 
-            {selectedCase.status !== 'EXECUTED' && (
+            {!singleOperatorMode && selectedCase.status !== 'EXECUTED' && (
               <div style={{ color: '#fbbf24', fontSize: '0.75rem' }}>
                 El cierre solo esta permitido cuando el caso este en estado Ejecutado.
               </div>

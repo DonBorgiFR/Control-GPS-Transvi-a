@@ -7,6 +7,8 @@ import { processMultipleGPSFiles, aggregateTrendData, aggregateVehicleHistory } 
 import { exportFleetSummaryPDF, exportProcedureCasePDF } from './utils/exportUtils';
 import {
   clearProcessedFiles,
+  exportHistorySnapshot,
+  importHistorySnapshot,
   loadProcessedFiles,
   mergeProcessedFiles,
   persistProcedureCaseUpdate,
@@ -36,6 +38,7 @@ const SectionFallback: React.FC<{ label: string }> = ({ label }) => (
 
 function App() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const restoreInputRef = useRef<HTMLInputElement | null>(null);
   const [viewMode, setViewMode] = useState<'TREND' | 'DETAIL' | 'PROCEDURE' | 'HISTORY'>('DETAIL');
   const [showQuickAccess, setShowQuickAccess] = useState(false);
   const [processedFiles, setProcessedFiles] = useState<ProcessedFileResult[] | null>(null);
@@ -338,6 +341,41 @@ function App() {
     }
   };
 
+  const handleExportHistoryBackup = async () => {
+    try {
+      const snapshot = await exportHistorySnapshot();
+      const blob = new Blob([snapshot], { type: 'application/json;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const now = new Date();
+      const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `transvina-respaldo-${stamp}.json`;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No fue posible exportar el respaldo JSON.');
+    }
+  };
+
+  const handleRestoreHistoryBackup = async (file: File) => {
+    try {
+      const content = await file.text();
+      const restoredFiles = await importHistorySnapshot(content);
+      setProcessedFiles(restoredFiles);
+      setProcedureCasesByFile(
+        Object.fromEntries(restoredFiles.map((entry) => [entry.filename, entry.procedureCases])),
+      );
+      setSelectedFileIndex(restoredFiles.length > 0 ? 0 : null);
+      setSelectedVehicleGroup(null);
+      setSelectedVehicleRegistration(null);
+      setViewMode(restoredFiles.length > 0 ? 'DETAIL' : 'HISTORY');
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No fue posible restaurar el respaldo JSON.');
+    }
+  };
+
   const jumpToView = (mode: 'TREND' | 'DETAIL' | 'PROCEDURE' | 'HISTORY') => {
     setViewMode(mode);
     if (processedFiles && processedFiles.length > 0 && selectedFileIndex === null && mode !== 'TREND') {
@@ -366,6 +404,19 @@ function App() {
             onChange={(e) => {
               if (!e.target.files || e.target.files.length === 0) return;
               void handleDataLoaded(e.target.files);
+              e.target.value = '';
+            }}
+          />
+
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              void handleRestoreHistoryBackup(file);
               e.target.value = '';
             }}
           />
@@ -401,6 +452,22 @@ function App() {
                   Exportar PDF Flota
                 </button>
               )}
+
+              {processedFiles && (
+                <button
+                  onClick={() => void handleExportHistoryBackup()}
+                  style={{ padding: '0.625rem 1rem', borderRadius: '0.75rem', background: 'rgba(16,185,129,0.14)', border: '1px solid rgba(16,185,129,0.45)', color: '#d1fae5', cursor: 'pointer' }}
+                >
+                  Respaldar Estado (JSON)
+                </button>
+              )}
+
+              <button
+                onClick={() => restoreInputRef.current?.click()}
+                style={{ padding: '0.625rem 1rem', borderRadius: '0.75rem', background: 'rgba(14,165,233,0.14)', border: '1px solid rgba(56,189,248,0.45)', color: '#dbeafe', cursor: 'pointer' }}
+              >
+                Restaurar Estado
+              </button>
 
               {selectedFile && (
                 <button
@@ -628,6 +695,7 @@ function App() {
                 <ProcedureBoard
                   cases={selectedProcedureCases}
                   excellenceCandidates={excellenceCandidates}
+                  singleOperatorMode
                   onUpdateCaseStatus={handleProcedureStatusUpdate}
                   onExportCasePDF={(procedureCase) => void handleExportProcedureCasePDF(procedureCase)}
                 />

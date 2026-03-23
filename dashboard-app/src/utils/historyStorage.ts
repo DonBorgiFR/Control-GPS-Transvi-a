@@ -21,6 +21,13 @@ interface StoredProcedureLog extends ProcedureEventLog {
   fileName: string;
 }
 
+interface HistorySnapshot {
+  version: 1;
+  exportedAt: string;
+  files: StoredProcessedFile[];
+  logs: Array<Omit<StoredProcedureLog, 'id'> & { id?: number }>;
+}
+
 const toStoredFile = (entry: ProcessedFileResult): StoredProcessedFile => ({
   ...entry,
   date: entry.date ? entry.date.toISOString() : null,
@@ -287,4 +294,119 @@ export const getProcedureLogsByCase = async (caseId: string): Promise<ProcedureE
   } finally {
     db.close();
   }
+};
+
+const normalizeStoredSnapshotFile = (entry: StoredProcessedFile): StoredProcessedFile => {
+  const safeStats = Array.isArray(entry.stats) ? entry.stats : [];
+  const safeCases = Array.isArray(entry.procedureCases) ? entry.procedureCases : [];
+
+  return {
+    ...entry,
+    stats: safeStats,
+    procedureCases: safeCases,
+    availableVehicleGroups: Array.isArray(entry.availableVehicleGroups)
+      ? entry.availableVehicleGroups
+      : undefined,
+  };
+};
+
+const validateHistorySnapshot = (payload: unknown): HistorySnapshot => {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('El respaldo no tiene un formato valido.');
+  }
+
+  const parsed = payload as Partial<HistorySnapshot>;
+  if (parsed.version !== 1) {
+    throw new Error('Version de respaldo no compatible.');
+  }
+
+  if (!Array.isArray(parsed.files) || !Array.isArray(parsed.logs)) {
+    throw new Error('El respaldo no contiene listas de archivos y bitacora validas.');
+  }
+
+  const safeFiles = parsed.files.map((entry) => normalizeStoredSnapshotFile(entry));
+  const safeLogs = parsed.logs
+    .filter((entry): entry is StoredProcedureLog => {
+      return Boolean(
+        entry &&
+          typeof entry === 'object' &&
+          typeof entry.caseId === 'string' &&
+          typeof entry.fileName === 'string' &&
+          typeof entry.timestamp === 'string' &&
+          typeof entry.nextStatus === 'string' &&
+          typeof entry.performedByRole === 'string',
+      );
+    })
+    .map((entry) => ({
+      ...entry,
+      notes: typeof entry.notes === 'string' ? entry.notes : '',
+      previousStatus: entry.previousStatus ?? null,
+    }));
+
+  return {
+    version: 1,
+    exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : new Date().toISOString(),
+    files: safeFiles,
+    logs: safeLogs,
+  };
+};
+
+export const exportHistorySnapshot = async (): Promise<string> => {
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction([FILES_STORE, LOGS_STORE], 'readonly');
+    const files = await runRequest(tx.objectStore(FILES_STORE).getAll()) as StoredProcessedFile[];
+    const logs = await runRequest(tx.objectStore(LOGS_STORE).getAll()) as StoredProcedureLog[];
+
+    const snapshot: HistorySnapshot = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      files,
+      logs: logs.map(({ id, ...rest }) => ({ ...rest, id })),
+    };
+
+    return JSON.stringify(snapshot, null, 2);
+  } finally {
+    db.close();
+  }
+};
+
+export const importHistorySnapshot = async (jsonContent: string): Promise<ProcessedFileResult[]> => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonContent);
+  } catch {
+    throw new Error('El archivo JSON de respaldo no se pudo interpretar.');
+  }
+
+  const snapshot = validateHistorySnapshot(parsed);
+
+  const db = await openDatabase();
+  try {
+    const tx = db.transaction([FILES_STORE, LOGS_STORE], 'readwrite');
+    const filesStore = tx.objectStore(FILES_STORE);
+    const logsStore = tx.objectStore(LOGS_STORE);
+
+    filesStore.clear();
+    logsStore.clear();
+
+    for (const entry of snapshot.files) {
+      filesStore.put(entry);
+    }
+
+    for (const { id, ...entry } of snapshot.logs) {
+      void id;
+      logsStore.add(entry);
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error('No se pudo restaurar el respaldo.'));
+      tx.onabort = () => reject(tx.error ?? new Error('La restauracion del respaldo fue cancelada.'));
+    });
+  } finally {
+    db.close();
+  }
+
+  return await loadProcessedFiles();
 };

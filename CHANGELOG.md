@@ -2,6 +2,16 @@
 
 Todas las mejoras relevantes de este proyecto se documentan en este archivo.
 
+## v1.0.4 - 2026-03-23
+
+### Added
+- Modo operativo de jefe unico en el panel de procedimiento con responsable fijo en Prevencion de Riesgos y cierre directo del caso.
+- Respaldo de estado en archivo JSON portable (`Respaldar Estado`) incluyendo historico y bitacora de actuaciones.
+- Restauracion de estado desde archivo JSON (`Restaurar Estado`) para continuar seguimiento aun si cambia el origen del navegador.
+
+### Changed
+- Interfaz principal actualizada con controles de respaldo/restauracion orientados a continuidad operativa en carpeta compartida.
+
 ## v1.0.3 - 2026-03-23
 
 ### Added
