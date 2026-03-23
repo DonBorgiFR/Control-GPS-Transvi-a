@@ -412,6 +412,52 @@ function App() {
     setShowQuickAccess(false);
   };
 
+  const getModeButtonStyle = (mode: 'TREND' | 'DETAIL' | 'PROCEDURE' | 'HISTORY'): React.CSSProperties => {
+    const isActive = viewMode === mode;
+
+    if (mode === 'TREND') {
+      return {
+        padding: '0.5rem 1rem',
+        borderRadius: '0.55rem',
+        background: isActive ? 'rgba(56,189,248,0.16)' : 'rgba(255,255,255,0.02)',
+        color: isActive ? '#7dd3fc' : '#94a3b8',
+        border: `1px solid ${isActive ? 'rgba(56,189,248,0.45)' : 'rgba(255,255,255,0.08)'}`,
+        cursor: 'pointer',
+      };
+    }
+
+    if (mode === 'DETAIL') {
+      return {
+        padding: '0.5rem 1rem',
+        borderRadius: '0.55rem',
+        background: isActive ? 'rgba(148,163,184,0.16)' : 'rgba(255,255,255,0.02)',
+        color: isActive ? '#e2e8f0' : '#94a3b8',
+        border: `1px solid ${isActive ? 'rgba(148,163,184,0.45)' : 'rgba(255,255,255,0.08)'}`,
+        cursor: 'pointer',
+      };
+    }
+
+    if (mode === 'PROCEDURE') {
+      return {
+        padding: '0.5rem 1rem',
+        borderRadius: '0.55rem',
+        background: isActive ? 'rgba(245,184,0,0.16)' : 'rgba(255,255,255,0.02)',
+        color: isActive ? '#F5B800' : '#94a3b8',
+        border: `1px solid ${isActive ? 'rgba(245,184,0,0.5)' : 'rgba(255,255,255,0.08)'}`,
+        cursor: 'pointer',
+      };
+    }
+
+    return {
+      padding: '0.5rem 1rem',
+      borderRadius: '0.55rem',
+      background: isActive ? 'rgba(52,211,153,0.16)' : 'rgba(255,255,255,0.02)',
+      color: isActive ? '#6ee7b7' : '#94a3b8',
+      border: `1px solid ${isActive ? 'rgba(52,211,153,0.45)' : 'rgba(255,255,255,0.08)'}`,
+      cursor: 'pointer',
+    };
+  };
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -665,14 +711,7 @@ function App() {
                   setViewMode('TREND');
                   setSelectedFileIndex(null);
                 }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  background: viewMode === 'TREND' ? 'rgba(245,184,0,0.15)' : 'transparent',
-                  color: viewMode === 'TREND' ? '#F5B800' : '#94a3b8',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+                style={getModeButtonStyle('TREND')}
               >
                 Tendencias Temporales
               </button>
@@ -683,14 +722,7 @@ function App() {
                     setSelectedFileIndex(0);
                   }
                 }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  background: viewMode === 'DETAIL' ? 'rgba(245,184,0,0.15)' : 'transparent',
-                  color: viewMode === 'DETAIL' ? '#F5B800' : '#94a3b8',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+                style={getModeButtonStyle('DETAIL')}
               >
                 Vista Detallada
               </button>
@@ -701,27 +733,13 @@ function App() {
                     setSelectedFileIndex(0);
                   }
                 }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  background: viewMode === 'PROCEDURE' ? 'rgba(245,184,0,0.15)' : 'transparent',
-                  color: viewMode === 'PROCEDURE' ? '#F5B800' : '#94a3b8',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+                style={getModeButtonStyle('PROCEDURE')}
               >
                 Procedimiento
               </button>
               <button
                 onClick={() => setViewMode('HISTORY')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  background: viewMode === 'HISTORY' ? 'rgba(52,211,153,0.2)' : 'transparent',
-                  color: viewMode === 'HISTORY' ? '#6ee7b7' : '#94a3b8',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+                style={getModeButtonStyle('HISTORY')}
               >
                 Historial
               </button>
