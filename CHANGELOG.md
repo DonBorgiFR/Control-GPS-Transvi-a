@@ -2,6 +2,19 @@
 
 Todas las mejoras relevantes de este proyecto se documentan en este archivo.
 
+## v1.0.1 - 2026-03-23
+
+### Fixed
+- **Iniciar Dashboard.bat**: corregido bug crítico que impedía arrancar la aplicación al compartir la carpeta.
+  - Eliminada ruta con carácter `ñ` dentro de `cmd /k` que causaba fallo silencioso en Windows.
+  - Cambiado de `npm run dev` (servidor de desarrollo) a `npm run preview` (build de producción); arranca en ~1 segundo.
+  - Cambiado puerto de `5173` a `4173` (puerto estándar de `vite preview`).
+  - Agregado auto-build automático si la carpeta `dist/` no existe (primera ejecución en equipo nuevo).
+  - Agregado `chcp 65001` para codificación UTF-8 correcta en consola Windows.
+
+### Changed
+- Documentación organizada en carpeta `Documentación/` con prefijos numéricos para orden visual.
+
 ## v1.0.0 - 2026-03-22
 
 ### Added

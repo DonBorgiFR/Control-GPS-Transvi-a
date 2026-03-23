@@ -1,10 +1,11 @@
 @echo off
+chcp 65001 > nul
 title Dashboard GPS Transviña - Prevención de Riesgos
 color 0A
 
 echo.
 echo  ================================================
-echo   Dashboard GPS Transviña - Prevención de Riesgos
+echo   Dashboard GPS Transviña - Prevencion de Riesgos
 echo  ================================================
 echo.
 
@@ -34,14 +35,29 @@ if not exist "package.json" (
 
 :: Instalar dependencias si es primera vez (no existe node_modules)
 if not exist "node_modules\" (
-    echo  Primera ejecución: instalando dependencias...
+    echo  Primera ejecucion: instalando dependencias...
     echo  (Este paso solo ocurre la primera vez, puede tomar 2-3 minutos)
     echo.
     call npm install
     if %errorlevel% neq 0 (
         echo.
-        echo  [ERROR] La instalación de dependencias falló.
-        echo  Verifica tu conexión a internet e intenta nuevamente.
+        echo  [ERROR] La instalacion de dependencias fallo.
+        echo  Verifica tu conexion a internet e intenta nuevamente.
+        pause
+        exit /B 1
+    )
+    echo.
+)
+
+:: Construir la app si no existe la carpeta dist (o es la primera vez)
+if not exist "dist\index.html" (
+    echo  Construyendo la aplicacion...
+    echo  (Este paso puede tomar 1-2 minutos, solo ocurre la primera vez)
+    echo.
+    call npm run build
+    if %errorlevel% neq 0 (
+        echo.
+        echo  [ERROR] La construccion fallo.
         pause
         exit /B 1
     )
@@ -51,19 +67,19 @@ if not exist "node_modules\" (
 echo  Iniciando servidor...
 echo.
 
-:: Abrir una ventana minimizada con el servidor de desarrollo
-:: Nota: forzamos el directorio para evitar errores por carpeta de trabajo incorrecta
-start /min "Servidor Dashboard GPS" cmd /k "cd /d \"%~dp0dashboard-app\" && npm run dev"
+:: Iniciar servidor en ventana minimizada
+:: (ya estamos en dashboard-app gracias al cd /d de arriba, sin problemas de ruta)
+start /min "Servidor Dashboard GPS" cmd /k "npm run preview"
 
 :: Esperar que el servidor arranque
-timeout /t 4 /nobreak > nul
+timeout /t 3 /nobreak > nul
 
 echo  Abriendo el dashboard en el navegador...
-start http://localhost:5173
+start http://localhost:4173
 
 echo.
 echo  ================================================
-echo   Dashboard disponible en http://localhost:5173
+echo   Dashboard disponible en http://localhost:4173
 echo.
 echo   Para detener el servidor:
 echo   1. Cierra la ventana "Servidor Dashboard GPS"
