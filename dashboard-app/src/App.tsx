@@ -36,6 +36,15 @@ const SectionFallback: React.FC<{ label: string }> = ({ label }) => (
   <div style={sectionLoadingStyles}>Cargando {label}...</div>
 );
 
+const BACKUP_TIMESTAMP_KEY = 'transvina:last-backup-at';
+
+const formatBackupTimestamp = (value: string | null): string => {
+  if (!value) return 'Sin respaldo generado en este equipo';
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return 'Fecha de respaldo no disponible';
+  return new Date(parsed).toLocaleString('es-CL');
+};
+
 function App() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const restoreInputRef = useRef<HTMLInputElement | null>(null);
@@ -49,6 +58,7 @@ function App() {
   const [procedureCasesByFile, setProcedureCasesByFile] = useState<Record<string, ProcedureCase[]>>({});
   const [selectedVehicleRegistration, setSelectedVehicleRegistration] = useState<string | null>(null);
   const [selectedVehicleGroup, setSelectedVehicleGroup] = useState<string | null>(null);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -77,6 +87,14 @@ function App() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(BACKUP_TIMESTAMP_KEY);
+    if (stored) {
+      setLastBackupAt(stored);
+    }
   }, []);
 
   const handleDataLoaded = async (files: FileList) => {
@@ -353,6 +371,9 @@ function App() {
       anchor.download = `transvina-respaldo-${stamp}.json`;
       anchor.click();
       window.URL.revokeObjectURL(url);
+      const exportedAt = new Date().toISOString();
+      setLastBackupAt(exportedAt);
+      window.localStorage.setItem(BACKUP_TIMESTAMP_KEY, exportedAt);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible exportar el respaldo JSON.');
     }
@@ -361,6 +382,7 @@ function App() {
   const handleRestoreHistoryBackup = async (file: File) => {
     try {
       const content = await file.text();
+      const parsedSnapshot = JSON.parse(content) as { exportedAt?: string };
       const restoredFiles = await importHistorySnapshot(content);
       setProcessedFiles(restoredFiles);
       setProcedureCasesByFile(
@@ -370,6 +392,9 @@ function App() {
       setSelectedVehicleGroup(null);
       setSelectedVehicleRegistration(null);
       setViewMode(restoredFiles.length > 0 ? 'DETAIL' : 'HISTORY');
+      const restoredBackupAt = typeof parsedSnapshot.exportedAt === 'string' ? parsedSnapshot.exportedAt : new Date().toISOString();
+      setLastBackupAt(restoredBackupAt);
+      window.localStorage.setItem(BACKUP_TIMESTAMP_KEY, restoredBackupAt);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible restaurar el respaldo JSON.');
@@ -488,6 +513,26 @@ function App() {
                 </button>
               )}
             </div>
+          </div>
+
+          <div
+            style={{
+              background: 'rgba(14,165,233,0.1)',
+              border: '1px solid rgba(56,189,248,0.35)',
+              borderRadius: '0.85rem',
+              padding: '0.75rem 0.9rem',
+              color: '#dbeafe',
+              fontSize: '0.8rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <strong style={{ color: '#bae6fd' }}>Guia de actuacion para Jefe de Prevencion</strong>
+              <span style={{ color: '#7dd3fc' }}>Ultimo respaldo: {formatBackupTimestamp(lastBackupAt)}</span>
+            </div>
+            <p style={{ margin: '0.35rem 0 0', color: '#bfdbfe' }}>
+              1) Carga el CSV de la jornada. 2) Revisa Procedimiento y prioriza casos vencidos o nivel 3-4. 3) Registra avance o cierre segun evidencia.
+              4) Antes de salir, usa <strong>Respaldar Estado (JSON)</strong> para continuidad operativa sin depender del navegador.
+            </p>
           </div>
 
           {processedFiles && (

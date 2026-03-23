@@ -2,6 +2,17 @@
 
 Todas las mejoras relevantes de este proyecto se documentan en este archivo.
 
+## v1.0.5 - 2026-03-23
+
+### Added
+- Recurso amigable fijo "Guia de actuacion para Jefe de Prevencion" en cabecera, con pasos operativos sin uso de popup.
+- Indicador "Ultimo respaldo" visible en pantalla principal.
+- Pruebas automaticas para respaldo/restauracion JSON en `historyStorage`.
+- Prueba de procesamiento con los 6 CSV reales (`ENE20260313` a `ENE20260318`).
+
+### Changed
+- Entorno de pruebas actualizado con `fake-indexeddb` para validar persistencia local en forma deterministica.
+
 ## v1.0.4 - 2026-03-23
 
 ### Added

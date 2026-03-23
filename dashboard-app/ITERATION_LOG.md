@@ -759,6 +759,47 @@ Cerrar funcionalidades criticas de entrega: exportacion PDF, correccion de parsi
 - Correccion de calculo de minutos de conduccion usando timestamps reales de ignicion.
 - Ajuste de consecutividad: sin timestamp valido no se consolida evento de exceso por tiempo.
 
+## Iteracion 20 - Guia Inicial + Validacion Real CSV + Persistencia Testeada
+
+### Objetivo
+Mejorar usabilidad para jefe de Prevencion con orientacion visible en pantalla principal y fortalecer confianza de continuidad con pruebas automatizadas de respaldo/restauracion.
+
+### Cambios Implementados
+
+1. Recurso amigable de operacion (sin popup).
+- Archivo: `src/App.tsx`.
+- Se agrega bloque fijo en cabecera: "Guia de actuacion para Jefe de Prevencion" con pasos operativos concretos.
+- El recurso queda siempre visible al inicio para evitar dependencia de overlays/popup.
+
+2. Indicador de ultimo respaldo.
+- Archivo: `src/App.tsx`.
+- Se incorpora estado `lastBackupAt` persistido en `localStorage`.
+- Se actualiza al exportar o restaurar respaldo JSON.
+- Se muestra en cabecera como referencia operacional de continuidad.
+
+3. Pruebas automaticas de respaldo/restauracion.
+- Archivo nuevo: `src/utils/historyStorage.test.ts`.
+- Se valida ciclo completo: guardar datos -> actualizar caso (log) -> exportar snapshot -> limpiar -> importar snapshot -> verificar archivos y bitacora.
+- Se agrega test de error para JSON invalido.
+
+4. Validacion con datos reales de las 6 jornadas.
+- Archivo nuevo: `src/utils/dataProcessor.realCsv.test.ts`.
+- Se procesan los 6 CSV reales de `datos/csv` (13 al 18 de marzo 2026).
+- Se valida orden temporal, presencia de eventos y generacion de casos de procedimiento.
+
+5. Entorno de test para IndexedDB confiable.
+- Archivo: `src/test/setup.ts`.
+- Se integra `fake-indexeddb/auto` para ejecutar pruebas de persistencia de forma estable.
+
+### Verificacion Final de Sesion
+- `npm run test` -> **48 tests OK**.
+- `npm run build` -> **OK, built in 3.03s**.
+
+### Resultado Operacional
+- El jefe ve desde el inicio "como actuar" sin popup.
+- La continuidad de trabajo queda visible con fecha de ultimo respaldo.
+- Persistencia portable queda validada por pruebas automatizadas.
+
 4. Cobertura de pruebas ampliada en utilidades criticas.
 - Nuevos tests para timestamps `HH:mm:ss`.
 - Nuevos tests para parseo numerico regional.
