@@ -2,6 +2,11 @@
 
 Todas las mejoras relevantes de este proyecto se documentan en este archivo.
 
+## v1.0.2 - 2026-03-23
+
+### Added
+- Cola de Procedimiento con ordenamiento interactivo por PPU, nivel, severidad, estado y vencimiento SLA.
+
 ## v1.0.1 - 2026-03-23
 
 ### Fixed

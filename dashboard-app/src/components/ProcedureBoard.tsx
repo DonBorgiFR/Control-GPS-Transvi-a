@@ -37,6 +37,25 @@ const ROLE_LABEL: Record<'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS
   PREVENCION_RIESGOS: 'Prevencion de Riesgos',
 };
 
+type ProcedureSortKey = 'registration' | 'driverLevel' | 'severity' | 'status' | 'dueAt';
+
+const STATUS_ORDER: Record<ProcedureStatus, number> = {
+  DETECTED: 0,
+  UNDER_REVIEW: 1,
+  ASSIGNED: 2,
+  ACTION_PROPOSED: 3,
+  APPROVED: 4,
+  EXECUTED: 5,
+  CLOSED: 6,
+};
+
+const SEVERITY_ORDER: Record<ProcedureCase['severity'], number> = {
+  None: -1,
+  Leve: 0,
+  Moderado: 1,
+  Grave: 2,
+};
+
 const suggestedRolesByCase = (
   procedureCase: ProcedureCase,
   nextStatus: ProcedureStatus | null,
@@ -195,6 +214,8 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
 }) => {
   const [statusFilter, setStatusFilter] = useState<ProcedureStatus | 'ALL'>('ALL');
   const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [sortKey, setSortKey] = useState<ProcedureSortKey>('dueAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(cases[0]?.id ?? null);
   const [note, setNote] = useState('');
   const [assigneeRole, setAssigneeRole] = useState<'SUPERVISOR' | 'JEFE_OPERACIONES' | 'PREVENCION_RIESGOS'>('SUPERVISOR');
@@ -221,10 +242,45 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     });
   }, [cases, statusFilter, onlyOverdue, referenceNow]);
 
+  const sortedCases = useMemo(() => {
+    const sortedEntries = [...filteredCases];
+    sortedEntries.sort((left, right) => {
+      let comparison = 0;
+
+      switch (sortKey) {
+        case 'registration':
+          comparison = left.registration.localeCompare(right.registration, 'es', { numeric: true, sensitivity: 'base' });
+          break;
+        case 'driverLevel':
+          comparison = left.driverLevel - right.driverLevel;
+          break;
+        case 'severity':
+          comparison = SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity];
+          break;
+        case 'status':
+          comparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
+          break;
+        case 'dueAt':
+          comparison = Date.parse(left.dueAt) - Date.parse(right.dueAt);
+          break;
+        default:
+          comparison = 0;
+      }
+
+      if (comparison === 0) {
+        comparison = left.registration.localeCompare(right.registration, 'es', { numeric: true, sensitivity: 'base' });
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sortedEntries;
+  }, [filteredCases, sortDirection, sortKey]);
+
   const selectedCase = useMemo(() => {
-    if (!selectedCaseId) return filteredCases[0] ?? null;
-    return filteredCases.find((entry) => entry.id === selectedCaseId) ?? filteredCases[0] ?? null;
-  }, [filteredCases, selectedCaseId]);
+    if (!selectedCaseId) return sortedCases[0] ?? null;
+    return sortedCases.find((entry) => entry.id === selectedCaseId) ?? sortedCases[0] ?? null;
+  }, [sortedCases, selectedCaseId]);
 
   const selectedNextStatus = selectedCase ? nextStatusForAction(selectedCase.status) : null;
 
@@ -288,6 +344,24 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
 
   const pendingCount = cases.filter((entry) => entry.status !== 'CLOSED').length;
   const overdueCount = cases.filter((entry) => Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED').length;
+
+  const toggleSort = (nextKey: ProcedureSortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((currentDirection) => (currentDirection === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDirection(nextKey === 'dueAt' ? 'asc' : 'desc');
+  };
+
+  const renderSortLabel = (label: string, key: ProcedureSortKey) => {
+    if (sortKey !== key) {
+      return `${label} ↕`;
+    }
+
+    return `${label} ${sortDirection === 'asc' ? '↑' : '↓'}`;
+  };
 
   if (cases.length === 0) {
     return (
@@ -364,21 +438,45 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
             <input type="checkbox" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} />
             Solo vencidos SLA
           </label>
+
+          <div style={{ color: '#94a3b8', fontSize: '0.78rem', display: 'flex', alignItems: 'center' }}>
+            Orden: {renderSortLabel(sortKey === 'registration' ? 'PPU' : sortKey === 'driverLevel' ? 'Nivel' : sortKey === 'severity' ? 'Severidad' : sortKey === 'status' ? 'Estado' : 'Vencimiento', sortKey)}
+          </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e2e8f0' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>PPU</th>
-                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>Nivel</th>
-                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>Sev.</th>
-                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>Estado</th>
-                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>Vence</th>
+                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('registration')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                    {renderSortLabel('PPU', 'registration')}
+                  </button>
+                </th>
+                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('driverLevel')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                    {renderSortLabel('Nivel', 'driverLevel')}
+                  </button>
+                </th>
+                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('severity')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                    {renderSortLabel('Sev.', 'severity')}
+                  </button>
+                 </th>
+                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('status')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                    {renderSortLabel('Estado', 'status')}
+                  </button>
+                 </th>
+                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('dueAt')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                    {renderSortLabel('Vence', 'dueAt')}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredCases.map((entry) => {
+              {sortedCases.map((entry) => {
                 const isSelected = selectedCase?.id === entry.id;
                 const isOverdue = Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED';
                 return (
