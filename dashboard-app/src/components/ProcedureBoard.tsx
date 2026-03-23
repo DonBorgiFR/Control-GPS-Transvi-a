@@ -56,6 +56,8 @@ const SEVERITY_ORDER: Record<ProcedureCase['severity'], number> = {
   Grave: 2,
 };
 
+const normalizeSearchValue = (value: string) => value.trim().toLocaleLowerCase('es');
+
 const suggestedRolesByCase = (
   procedureCase: ProcedureCase,
   nextStatus: ProcedureStatus | null,
@@ -214,6 +216,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
 }) => {
   const [statusFilter, setStatusFilter] = useState<ProcedureStatus | 'ALL'>('ALL');
   const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<ProcedureSortKey>('dueAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(cases[0]?.id ?? null);
@@ -227,6 +230,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
   const [correctionError, setCorrectionError] = useState('');
 
   const [referenceNow] = useState(() => Date.now());
+  const normalizedSearchTerm = useMemo(() => normalizeSearchValue(searchTerm), [searchTerm]);
 
   const filteredCases = useMemo(() => {
     return cases.filter((procedureCase) => {
@@ -238,9 +242,18 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         return false;
       }
 
+      if (normalizedSearchTerm) {
+        const registrationMatches = normalizeSearchValue(procedureCase.registration).includes(normalizedSearchTerm);
+        const vehicleNameMatches = normalizeSearchValue(procedureCase.vehicleName).includes(normalizedSearchTerm);
+
+        if (!registrationMatches && !vehicleNameMatches) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [cases, statusFilter, onlyOverdue, referenceNow]);
+  }, [cases, statusFilter, onlyOverdue, normalizedSearchTerm, referenceNow]);
 
   const sortedCases = useMemo(() => {
     const sortedEntries = [...filteredCases];
@@ -260,9 +273,20 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         case 'status':
           comparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
           break;
-        case 'dueAt':
-          comparison = Date.parse(left.dueAt) - Date.parse(right.dueAt);
+        case 'dueAt': {
+          const leftIsClosed = left.status === 'CLOSED';
+          const rightIsClosed = right.status === 'CLOSED';
+          const leftIsOverdue = Date.parse(left.dueAt) < referenceNow && !leftIsClosed;
+          const rightIsOverdue = Date.parse(right.dueAt) < referenceNow && !rightIsClosed;
+          const leftPriority = leftIsOverdue ? 0 : leftIsClosed ? 2 : 1;
+          const rightPriority = rightIsOverdue ? 0 : rightIsClosed ? 2 : 1;
+
+          comparison = leftPriority - rightPriority;
+          if (comparison === 0) {
+            comparison = Date.parse(left.dueAt) - Date.parse(right.dueAt);
+          }
           break;
+        }
         default:
           comparison = 0;
       }
@@ -275,7 +299,7 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     });
 
     return sortedEntries;
-  }, [filteredCases, sortDirection, sortKey]);
+  }, [filteredCases, referenceNow, sortDirection, sortKey]);
 
   const selectedCase = useMemo(() => {
     if (!selectedCaseId) return sortedCases[0] ?? null;
@@ -363,6 +387,16 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
     return `${label} ${sortDirection === 'asc' ? '↑' : '↓'}`;
   };
 
+  const getSortButtonStyle = (key: ProcedureSortKey) => ({
+    background: 'transparent',
+    border: 'none',
+    color: sortKey === key ? '#fbbf24' : 'inherit',
+    font: 'inherit',
+    fontWeight: 'inherit',
+    padding: '0.15rem 0',
+    cursor: 'pointer',
+  });
+
   if (cases.length === 0) {
     return (
       <div
@@ -421,6 +455,14 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por PPU o vehiculo"
+            style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', padding: '0.35rem 0.6rem', minWidth: '220px' }}
+          />
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProcedureStatus | 'ALL')}
@@ -448,34 +490,41 @@ export const ProcedureBoard: React.FC<ProcedureBoardProps> = ({
           <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e2e8f0' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort('registration')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: sortKey === 'registration' ? '#fbbf24' : '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('registration')} style={getSortButtonStyle('registration')}>
                     {renderSortLabel('PPU', 'registration')}
                   </button>
                 </th>
-                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort('driverLevel')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: sortKey === 'driverLevel' ? '#fbbf24' : '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('driverLevel')} style={getSortButtonStyle('driverLevel')}>
                     {renderSortLabel('Nivel', 'driverLevel')}
                   </button>
                 </th>
-                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort('severity')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: sortKey === 'severity' ? '#fbbf24' : '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('severity')} style={getSortButtonStyle('severity')}>
                     {renderSortLabel('Sev.', 'severity')}
                   </button>
                  </th>
-                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort('status')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                 <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: sortKey === 'status' ? '#fbbf24' : '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('status')} style={getSortButtonStyle('status')}>
                     {renderSortLabel('Estado', 'status')}
                   </button>
                  </th>
-                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700 }}>
-                  <button type="button" onClick={() => toggleSort('dueAt')} style={{ background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', fontWeight: 'inherit', padding: 0, cursor: 'pointer' }}>
+                <th style={{ textAlign: 'left', padding: '0.6rem', fontSize: '0.72rem', color: sortKey === 'dueAt' ? '#fbbf24' : '#cbd5e1', fontWeight: 700 }}>
+                  <button type="button" onClick={() => toggleSort('dueAt')} style={getSortButtonStyle('dueAt')}>
                     {renderSortLabel('Vence', 'dueAt')}
                   </button>
                 </th>
               </tr>
             </thead>
             <tbody>
+              {sortedCases.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ padding: '1rem 0.6rem', color: '#94a3b8', fontSize: '0.78rem' }}>
+                    No hay casos que coincidan con los filtros o la búsqueda actual.
+                  </td>
+                </tr>
+              )}
               {sortedCases.map((entry) => {
                 const isSelected = selectedCase?.id === entry.id;
                 const isOverdue = Date.parse(entry.dueAt) < referenceNow && entry.status !== 'CLOSED';

@@ -6,6 +6,11 @@ Todas las mejoras relevantes de este proyecto se documentan en este archivo.
 
 ### Added
 - Cola de Procedimiento con ordenamiento interactivo por PPU, nivel, severidad, estado y vencimiento SLA.
+- Búsqueda rápida en la Cola de Procedimiento por PPU o nombre de vehículo.
+
+### Changed
+- Orden por vencimiento ajustado para priorizar primero los casos vencidos y dejar al final los casos cerrados.
+- Encabezado activo del orden resaltado visualmente para que el criterio aplicado sea evidente.
 
 ## v1.0.1 - 2026-03-23
 
